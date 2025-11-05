@@ -1,0 +1,23 @@
+workspace_name             = "{{ workspace_name }}"
+resource_group_name        = "{{ resource_group_name }}"
+region                     = "{{ region }}"
+databricks_sku             = "{{ databricks_sku }}"
+min_workers                = {{ min_workers }}
+max_workers                = {{ max_workers }}
+driver_instance_type       = "{{ driver_instance_type }}"
+worker_instance_type       = "{{ worker_instance_type }}"
+spark_version              = "{{ spark_version }}"
+autotermination_minutes    = {{ autotermination_minutes }}
+
+tags = {
+  Environment      = "{{ environment }}"
+  ManagedBy        = "Terraform"
+  ProvisionedBy    = "InfrastructureAgent"
+  Workload         = "{{ workload_type }}"
+  Team             = "{{ team }}"
+  EstimatedCost    = "${{ estimated_monthly_cost }}/month"
+  # Azure Policy Required Tags
+  project          = "agent-infra-spike"
+  owner            = "{{ team }}"
+  enddate          = "2025-12-31"
+}

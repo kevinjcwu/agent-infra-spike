@@ -1,0 +1,80 @@
+# Resource Group
+resource "azurerm_resource_group" "main" {
+  name     = var.resource_group_name
+  location = var.region
+  tags     = var.tags
+}
+
+# Databricks Workspace
+resource "azurerm_databricks_workspace" "main" {
+  name                = var.workspace_name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = var.databricks_sku
+
+  tags = merge(
+    var.tags,
+    {
+      Name = var.workspace_name
+    }
+  )
+}
+
+# Databricks Instance Pool - Pre-warmed compute instances
+# This provisions actual compute infrastructure inside the Databricks workspace
+# Works with Standard tier and proves we can manage Databricks compute resources
+resource "databricks_instance_pool" "main" {
+  instance_pool_name = "${var.workspace_name}-pool"
+  min_idle_instances = 0
+  max_capacity       = 2
+  
+  node_type_id = var.worker_instance_type
+  
+  idle_instance_autotermination_minutes = 10
+  
+  preloaded_spark_versions = [
+    var.spark_version
+  ]
+
+  azure_attributes {
+    availability       = "ON_DEMAND_AZURE"
+    spot_bid_max_price = -1
+  }
+
+  depends_on = [azurerm_databricks_workspace.main]
+}
+
+# Note: Cluster creation commented out due to Azure capacity restrictions
+# Clusters can be created manually via Databricks UI after workspace provisioning
+# Uncomment and update instance types when capacity is available
+#
+# resource "databricks_cluster" "main" {
+#   cluster_name            = "${var.workspace_name}-cluster"
+#   spark_version           = var.spark_version
+#   node_type_id            = var.worker_instance_type
+#   driver_node_type_id     = var.driver_instance_type
+#   autotermination_minutes = var.autotermination_minutes
+#
+#   autoscale {
+#     min_workers = var.min_workers
+#     max_workers = var.max_workers
+#   }
+#
+#   azure_attributes {
+#     availability       = "ON_DEMAND_AZURE"
+#     first_on_demand    = 1
+#     spot_bid_max_price = -1
+#   }
+#
+#   spark_conf = {
+#     "spark.databricks.cluster.profile" = "serverless"
+#     "spark.databricks.repl.allowedLanguages" = "python,sql,scala,r"
+#   }
+#
+#   custom_tags = {
+#     ResourceClass = "Databricks"
+#     ClusterType   = "Interactive"
+#   }
+#
+#   depends_on = [azurerm_databricks_workspace.main]
+# }

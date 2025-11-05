@@ -1,0 +1,59 @@
+variable "workspace_name" {
+  description = "Name of the Databricks workspace"
+  type        = string
+}
+
+variable "resource_group_name" {
+  description = "Name of the Azure resource group"
+  type        = string
+}
+
+variable "region" {
+  description = "Azure region for resources"
+  type        = string
+}
+
+variable "databricks_sku" {
+  description = "Databricks workspace SKU (standard, premium, trial)"
+  type        = string
+  validation {
+    condition     = contains(["standard", "premium", "trial"], var.databricks_sku)
+    error_message = "SKU must be one of: standard, premium, trial"
+  }
+}
+
+variable "min_workers" {
+  description = "Minimum number of cluster workers"
+  type        = number
+}
+
+variable "max_workers" {
+  description = "Maximum number of cluster workers"
+  type        = number
+}
+
+variable "driver_instance_type" {
+  description = "Azure VM size for the cluster driver"
+  type        = string
+}
+
+variable "worker_instance_type" {
+  description = "Azure VM size for the cluster workers"
+  type        = string
+}
+
+variable "spark_version" {
+  description = "Databricks runtime version"
+  type        = string
+}
+
+variable "autotermination_minutes" {
+  description = "Auto-termination timeout in minutes"
+  type        = number
+}
+
+variable "tags" {
+  description = "Tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+}

@@ -1,0 +1,2 @@
+[console_scripts]
+agent-infra = cli:cli

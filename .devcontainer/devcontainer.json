@@ -1,0 +1,66 @@
+{
+  "name": "agent-infra-spike",
+  "image": "mcr.microsoft.com/devcontainers/python:dev-3.12-bookworm",
+  "runArgs": [
+    "--network",
+    "host"
+  ],
+  "features": {
+    "ghcr.io/jsburckhardt/devcontainer-features/uv": {},
+    "ghcr.io/devcontainers/features/azure-cli": {},
+    "ghcr.io/stuartleeks/dev-container-features/shell-history": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker": {},
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "latest"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true,
+        "editor.tabSize": 2,
+        "files.autoSave": "onFocusChange",
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "python.analysis.typeCheckingMode": "basic",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        "[python]": {
+          "editor.formatOnSave": true,
+          "editor.tabSize": 4
+        },
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/*.pyc": true,
+          ".pytest_cache": true,
+          ".ruff_cache": true,
+          "*.egg-info": true,
+          ".venv": false
+        }
+      },
+      "extensions": [
+        "astral-sh.uv",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-toolsai.jupyter",
+        "eamodio.gitlens",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "hashicorp.terraform",
+        "ms-azuretools.vscode-azureterraform"
+      ]
+    }
+  },
+  "forwardPorts": [8000, 8080, 8888, 9000],
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.azure,target=/home/vscode/.azure,type=bind,consistency=cached"
+  ],
+  "remoteEnv": {
+    "PYTHONPATH": "${containerWorkspaceFolder}"
+  }
+}

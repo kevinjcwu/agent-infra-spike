@@ -1,0 +1,40 @@
+output "workspace_url" {
+  description = "URL of the Databricks workspace"
+  value       = "https://${azurerm_databricks_workspace.main.workspace_url}"
+}
+
+output "workspace_id" {
+  description = "Azure resource ID of the Databricks workspace"
+  value       = azurerm_databricks_workspace.main.id
+}
+
+output "resource_group_name" {
+  description = "Name of the resource group"
+  value       = azurerm_resource_group.main.name
+}
+
+output "resource_group_id" {
+  description = "Azure resource ID of the resource group"
+  value       = azurerm_resource_group.main.id
+}
+
+output "instance_pool_id" {
+  description = "ID of the Databricks Instance Pool"
+  value       = databricks_instance_pool.main.id
+}
+
+output "instance_pool_name" {
+  description = "Name of the Databricks Instance Pool"
+  value       = databricks_instance_pool.main.instance_pool_name
+}
+
+# Note: cluster_id output commented out since cluster resource is disabled
+# output "cluster_id" {
+#   description = "ID of the default Databricks cluster"
+#   value       = databricks_cluster.main.id
+# }
+
+output "region" {
+  description = "Azure region where resources are deployed"
+  value       = azurerm_resource_group.main.location
+}
