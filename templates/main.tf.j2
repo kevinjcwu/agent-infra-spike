@@ -27,11 +27,11 @@ resource "databricks_instance_pool" "main" {
   instance_pool_name = "${var.workspace_name}-pool"
   min_idle_instances = 0
   max_capacity       = 2
-  
+
   node_type_id = var.worker_instance_type
-  
+
   idle_instance_autotermination_minutes = 10
-  
+
   preloaded_spark_versions = [
     var.spark_version
   ]
