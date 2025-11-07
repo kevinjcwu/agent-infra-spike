@@ -1,75 +1,146 @@
-# Databricks Infrastructure Agent - Spike/POC
+# Infrastructure Provisioning Agent - Spike/POC
 
-AI-powered agent that automates Databricks workspace provisioning from natural language requests.
+AI-powered conversational orchestrator that automates infrastructure provisioning through multi-turn dialogue.
 
-## 🎯 Goal
+## 🎉 Status: Spike Complete & Deployed
 
-Reduce Databricks workspace provisioning from 3-4 hours (manual) to 15-20 minutes (automated).
+**Successfully deployed to Azure on November 7, 2025**
+- ✅ Conversational orchestrator working end-to-end
+- ✅ Verified Azure deployment: [Databricks workspace](https://adb-4412170593674511.11.azuredatabricks.net)
+- ✅ Resource Group: `rg-e2e-deploy-dev`
+- ✅ Deployment time: ~13 minutes (785 seconds)
 
-## 🏛️ Architecture
+---
 
-### High-Level Workflow
+## 🚀 Evolution Journey
+
+**From**: Single-purpose Databricks agent with single-shot commands
+**To**: Multi-capability orchestration platform with conversational interface
+
+**Completed Phases**:
+- ✅ **Phase 0**: Microsoft Agent Framework (MAF) integration with Azure OpenAI
+- ✅ **Phase 1**: Multi-turn conversational orchestrator with tool integration
+- ✅ **Phase 1.5**: Tool Registry pattern for scalable tool management
+- ✅ **Phase 1.6**: Capability Registry pattern for hallucination prevention
+- ✅ **Phase 2**: Capability integration with BaseCapability interface
+- ✅ **Actual Azure Deployment**: Verified working infrastructure
+
+**Current Scope**:
+- 🎯 **Databricks Deployment** (production-ready)
+  - Azure Resource Group
+  - Azure Databricks Workspace (Premium SKU)
+  - Databricks Compute Cluster (GPU/CPU with autoscaling)
+  - ~13 minutes from conversation to deployed infrastructure
+
+---
+
+## 📚 Documentation Navigation
+
+**For Developers**:
+- [`.github/copilot-instructions.md`](.github/copilot-instructions.md) - Primary coding guidance
+
+**Architecture & Design**:
+- [`docs/ARCHITECTURE_EVOLUTION.md`](docs/ARCHITECTURE_EVOLUTION.md) - Vision, decisions, next phases
+- [`docs/STRUCTURE_VISUAL_GUIDE.md`](docs/STRUCTURE_VISUAL_GUIDE.md) - Current structure with diagrams
+- [`docs/PRD.md`](docs/PRD.md) - Original product requirements
+
+**Implementation**:
+- [`capabilities/README.md`](capabilities/README.md) - How to add new capabilities
+- [`docs/implementation_status/`](docs/implementation_status/) - Phase-by-phase progress
+- [`docs/MAF_TOOL_CALLING_FIX.md`](docs/MAF_TOOL_CALLING_FIX.md) - Technical fix details
+
+---
+
+## 🎯 What This Does
+
+Reduces Databricks workspace provisioning from **3-4 hours (manual)** to **~13 minutes (automated)**.
+
+### Key Features
+
+**Conversational Interface**:
+- Multi-turn dialogue to gather requirements
+- Smart defaults with user customization
+- Natural language parameter extraction
+- Cost estimation before deployment
+
+**Tool-Enabled Orchestrator**:
+- `select_capabilities` - Validates infrastructure capability names
+- `suggest_naming` - Generates Azure-compliant resource names
+- `estimate_cost` - Calculates monthly cost breakdown
+- `execute_deployment` - Triggers actual deployment to Azure
+
+**Pluggable Architecture**:
+- BaseCapability interface for all infrastructure types
+- DatabricksCapability wraps proven deployment logic
+- Easy to extend with new capabilities (OpenAI, Firewall, etc.)
+
+---
+
+## 🏛️ Architecture Overview
+
+### Conversational Workflow
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          USER INPUT (Natural Language)                      │
-│   "Create a production workspace for ML team in East US with GPU support"   │
+│                    USER: "I need Databricks for ML team"                    │
 └────────────────────────────────┬────────────────────────────────────────────┘
                                  │
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        1. INTENT RECOGNIZER                                 │
-│  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │  Azure OpenAI GPT-4 with Function Calling                          │     │
-│  │  • Parses natural language → structured data                       │     │
-│  │  • Extracts: team, environment, region, GPU, workload type         │     │
-│  │  • Output: InfrastructureRequest object                            │     │
-│  └────────────────────────────────────────────────────────────────────┘     │
+│                   ORCHESTRATOR (Multi-turn Conversation)                    │
+│  • Asks clarifying questions (team name, environment, region)               │
+│  • Uses tools to suggest names, estimate costs, validate capabilities       │
+│  • Proposes deployment plan with cost breakdown                             │
+│  • Detects execute_deployment tool call and triggers deployment             │
 └────────────────────────────────┬────────────────────────────────────────────┘
                                  │
                                  ▼
-                    InfrastructureRequest
-                    {
-                      workspace_name: "ml-prod"
-                      team: "ml"
-                      environment: "prod"
-                      region: "eastus"
-                      enable_gpu: true
-                      workload_type: "ml"
-                    }
-                                 │
-                                 ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        2. DECISION ENGINE                                   │
-│  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │  Business Logic & Configuration Selection                          │     │
-│  │  • Selects VM instance types (GPU vs CPU)                          │     │
-│  │  • Determines Databricks SKU (Standard/Premium)                    │     │
-│  │  • Calculates cluster sizing (min/max workers)                     │     │
-│  │  • Estimates monthly costs                                         │     │
-│  │  • Applies environment-based policies                              │     │
-│  └────────────────────────────────────────────────────────────────────┘     │
+│                   CAPABILITY (DatabricksCapability)                         │
+│  • plan(): Parse requirements, make decisions, generate Terraform           │
+│  • execute(): Run terraform apply, return workspace URL                     │
 └────────────────────────────────┬────────────────────────────────────────────┘
                                  │
                                  ▼
-                    InfrastructureDecision
-                    {
-                      driver_instance: "Standard_NC6s_v3"
-                      worker_instance: "Standard_NC6s_v3"
-                      databricks_sku: "premium"
-                      min_workers: 2, max_workers: 8
-                      estimated_cost: "$3,200/month"
-                    }
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   AGENT MODULES (Deployment Logic)                          │
+│  • IntentRecognizer: Natural language → InfrastructureRequest               │
+│  • DecisionEngine: Configuration decisions (GPU/CPU, SKU, sizing)           │
+│  • TerraformGenerator: Jinja2 templates → HCL files                         │
+│  • TerraformExecutor: Run terraform init/plan/apply                         │
+└────────────────────────────────┬────────────────────────────────────────────┘
                                  │
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        3. TERRAFORM GENERATOR                               │
-│  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │  Jinja2 Template Rendering                                         │     │
-│  │  • Renders 5 Terraform files from templates:                       │     │
-│  │    - provider.tf (Azure + Databricks providers)                    │     │
-│  │    - main.tf (resource definitions)                                │     │
-│  │    - variables.tf (input variables)                                │     │
+│                          AZURE RESOURCES ✅                                 │
+│  • Resource Group: rg-e2e-deploy-dev                                        │
+│  • Databricks Workspace: e2e-deploy-dev                                     │
+│  • Databricks Cluster: e2e-deploy-dev-cluster (GPU instances)               │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+**Orchestrator Layer** (`orchestrator/`):
+- MAF-based conversational agent
+- Tool registry with dynamic registration
+- Capability registry for validation
+- Multi-turn conversation management
+
+**Capability Layer** (`capabilities/`):
+- BaseCapability interface (plan/validate/execute/rollback)
+- DatabricksCapability wraps agent modules
+- Pluggable architecture for new infrastructure types
+
+**Agent Layer** (`agent/`):
+- Active deployment code (NOT deprecated)
+- LLM-based intent recognition
+- Business logic for configuration decisions
+- Terraform generation and execution
+
+**See**: [`docs/STRUCTURE_VISUAL_GUIDE.md`](docs/STRUCTURE_VISUAL_GUIDE.md) for detailed diagrams
+
+---
 │  │    - outputs.tf (output values)                                    │     │
 │  │    - terraform.tfvars (variable values)                            │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
@@ -218,14 +289,15 @@ Each successful deployment creates:
 2. **Databricks Workspace** (azurerm_databricks_workspace) - Standard or Premium SKU
 3. **Databricks Instance Pool** (databricks_instance_pool) - Pre-warmed compute VMs
 
-Total deployment time: **12-15 minutes** from request to running workspace.
-
-## 📋 Documentation
-
-- **[PRD](docs/PRD.md)**: Complete requirements and specifications
-- **[Copilot Instructions](.github/copilot-instructions.md)**: Code generation guidelines
-
 ## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.12+
+- Azure subscription with Databricks permissions
+- Azure OpenAI service with GPT-4o deployment
+
+### Setup
+
 ```bash
 # 1. Clone repository
 git clone https://github.com/YOUR_ORG/agent-infra-spike.git
@@ -234,111 +306,210 @@ cd agent-infra-spike
 # 2. Set up environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -e .
 
 # 3. Configure credentials
 cp .env.example .env
-# Edit .env with your Azure OpenAI and Azure credentials
-
-# 4. Run agent
-python cli.py provision --request "Create dev workspace for data team"
+# Edit .env with your Azure OpenAI and Azure credentials:
+#   AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+#   AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+#   AZURE_OPENAI_API_VERSION=2024-08-01-preview
+#   AZURE_SUBSCRIPTION_ID=your-subscription-id
+#   AZURE_TENANT_ID=your-tenant-id
 ```
 
-## 💻 Usage
-
-### Provision a Workspace
+### Run Conversational Interface
 
 ```bash
-# Basic request with interactive approval
-python cli.py provision --request "Create workspace for ML team"
+# Start the conversational orchestrator
+python cli_maf.py
 
-# Dry-run to validate without deploying
-python cli.py provision --request "Create prod workspace in East US" --dry-run
-
-# Fully automated deployment
-python cli.py provision --request "Create analytics workspace" --auto-approve
-
-# With custom working directory
-python cli.py provision -r "Create workspace" -w ./terraform-state
-
-# Verbose output for debugging
-python cli.py provision -r "Create workspace" --verbose
+# Example interaction:
+# You: "I need a Databricks workspace for ML experimentation"
+# Agent: "I'll help you provision a Databricks workspace. Let me ask a few questions..."
+# Agent: "What environment? (dev/staging/prod)"
+# You: "dev"
+# Agent: "Which Azure region? (eastus/westus2/centralus)"
+# You: "eastus"
+# Agent: "I'll create these resources:
+#        - Resource Group: rg-ml-dev
+#        - Workspace: ml-dev
+#        - Cluster: ml-dev-cluster
+#        Estimated cost: ~$1,600/month
+#        Proceed with deployment?"
+# You: "yes"
+# Agent: [Deploys to Azure in ~13 minutes]
+# Agent: "✅ Deployment complete! Workspace URL: https://adb-xxxx.azuredatabricks.net"
 ```
 
-### Destroy a Workspace
+### Run Tests
 
 ```bash
-# Interactive destruction (will prompt for confirmation)
-python cli.py destroy --working-dir ./terraform-state
+# All tests (23 tests)
+pytest tests/ -v
 
-# Automated destruction
-python cli.py destroy -w ./terraform-state --auto-approve
+# By phase
+pytest tests/test_maf_setup.py -v              # Phase 0 (6 tests)
+pytest tests/test_orchestrator.py -v           # Phase 1 (9 tests)
+pytest tests/test_capability_integration.py -v # Phase 2 (8 tests)
+
+# With coverage
+pytest tests/ --cov=orchestrator --cov=capabilities --cov=agent --cov-report=html
 ```
 
-### Example Requests
-
-The agent understands natural language. Try these examples:
-
-- "Create a production workspace for the ML team in East US with GPU support"
-- "Create dev workspace for data engineering team"
-- "Create staging workspace for analytics in West US"
-- "Create workspace with cost limit of $5000"
+---
 
 ## 🏗️ Project Structure
+
 ```
 agent-infra-spike/
+├── orchestrator/                    # MAF-based conversational orchestrator
+│   ├── orchestrator_agent.py        # Main conversation manager
+│   ├── tool_manager.py              # Dynamic tool registration
+│   ├── tools.py                     # 4 tools (select, suggest, estimate, execute)
+│   ├── capability_registry.py       # Anti-hallucination validation
+│   └── models.py                    # Data models
+│
+├── capabilities/                    # Pluggable infrastructure capabilities
+│   ├── base.py                      # BaseCapability interface
+│   └── databricks/
+│       └── capability.py            # Databricks provisioning capability
+│
+├── agent/                           # Deployment logic (ACTIVE)
+│   ├── intent_recognizer.py         # LLM: NL → InfrastructureRequest
+│   ├── decision_engine.py           # Business logic for config decisions
+│   ├── terraform_generator.py       # Jinja2: Decision → HCL
+│   ├── terraform_executor.py        # Terraform CLI wrapper
+│   ├── models.py                    # Data models
+│   └── config.py                    # Azure configuration
+│
+├── templates/                       # Terraform Jinja2 templates
+│   ├── main.tf.j2
+│   ├── variables.tf.j2
+│   ├── outputs.tf.j2
+│   ├── provider.tf.j2
+│   └── terraform.tfvars.j2
+│
+├── tests/                           # Test suite (23 tests, all passing)
+│   ├── test_maf_setup.py            # Phase 0
+│   ├── test_orchestrator.py         # Phase 1
+│   └── test_capability_integration.py # Phase 2
+│
+├── docs/                            # Documentation
+│   ├── ARCHITECTURE_EVOLUTION.md    # Vision and next phases
+│   ├── STRUCTURE_VISUAL_GUIDE.md    # Current structure
+│   ├── PRD.md                       # Original requirements
+│   └── implementation_status/       # Phase-by-phase progress
+│
 ├── .github/
-│   └── copilot-instructions.md    # Copilot guidance
-├── agent/                          # Core agent logic
-│   ├── models.py                   # Data models
-│   ├── intent_recognizer.py        # LLM integration
-│   ├── decision_engine.py          # Configuration logic
-│   ├── terraform_generator.py      # HCL generation
-│   ├── terraform_executor.py       # Terraform execution
-│   └── infrastructure_agent.py     # Main orchestrator
-├── modules/                        # Terraform modules
-├── templates/                      # Jinja2 templates
-├── tests/                          # Test suite
-└── docs/                           # Documentation
-    └── PRD.md                      # Product requirements
+│   └── copilot-instructions.md      # Primary coding guidance
+│
+├── cli_maf.py                       # 🎯 Conversational CLI (USE THIS)
+├── pyproject.toml                   # Python dependencies
+└── .env                             # Azure credentials
 ```
 
-## 📊 Status
+**See**: [`docs/STRUCTURE_VISUAL_GUIDE.md`](docs/STRUCTURE_VISUAL_GUIDE.md) for detailed architecture diagrams
 
-**Phase**: Spike Complete - Fully Functional! 🎉
-**Progress**: End-to-end system operational from CLI to deployed infrastructure ✅
+---
 
-### Completed
-- ✅ Data models (InfrastructureRequest, InfrastructureDecision, DeploymentResult, TerraformFiles)
-- ✅ Configuration management with Azure OpenAI support
-- ✅ Intent Recognizer (Azure OpenAI GPT-4 with tool calling)
-- ✅ Decision Engine (intelligent instance selection, cost estimation)
-- ✅ Terraform Generator (Jinja2 templates → production-ready HCL)
-- ✅ Terraform Executor (subprocess management for init/plan/apply/destroy)
-- ✅ Infrastructure Agent (main orchestrator tying all components together)
-- ✅ **CLI Interface (user-friendly command-line tool with provision and destroy commands)**
-- ✅ Comprehensive test suite (98 tests, 92% coverage)
-- ✅ Example scripts and documentation
+## 📊 Implementation Status
 
-### Optional Next Steps
-- 🔄 End-to-end integration testing with real Azure credentials
-- 🔄 Demo video and presentation materials
-- 🔄 Performance benchmarking (target: <20 minutes for deployment)
+### ✅ Completed (Spike Complete)
+
+**Phase 0: MAF Integration**
+- Microsoft Agent Framework v2025-03-01-preview
+- Azure OpenAI connectivity validated
+- 6 tests passing
+
+**Phase 1: Conversational Orchestrator**
+- Multi-turn conversation with parameter gathering
+- MAF automatic context management
+- 9 tests passing
+
+**Phase 1.5: Tool Registry Pattern**
+- Dynamic tool registration with `@tool_manager.register`
+- Auto-schema generation from type hints
+- 4 tools implemented and working
+
+**Phase 1.6: Capability Registry**
+- Anti-hallucination validation
+- LLM semantic understanding + registry validation
+- Prevents invalid capability names
+
+**Phase 2: Capability Integration**
+- BaseCapability interface (plan/validate/execute/rollback)
+- DatabricksCapability wrapping agent/ modules
+- **Actual Azure deployment verified**
+- 8 tests passing
+
+**Deployment Proof**:
+- ✅ Workspace URL: `https://adb-4412170593674511.11.azuredatabricks.net`
+- ✅ Resource Group: `rg-e2e-deploy-dev`
+- ✅ Duration: ~13 minutes (785 seconds)
+- ✅ Resources: RG + Workspace + Cluster (GPU instances)
+
+### 🎯 What's Next (Post-Spike)
+
+**Phase 3: State Persistence & Robustness** (2-3 weeks)
+- File-based or database-backed conversation state
+- Resume interrupted deployments
+- Comprehensive error handling with rollback
+- Audit logging for all operations
+
+**Phase 4: Second Capability** (2-3 weeks)
+- Add Azure OpenAI provisioning capability
+- Test multi-capability workflows
+- Implement capability dependency management
+- Partial success handling
+
+**Phase 5: Enterprise Features** (4-6 weeks)
+- Role-based access control
+- Cost budgets and approval workflows
+- Monitoring and alerting integration
+- Jira/ServiceNow ticket integration
+- Self-service portal or Slack/Teams bot interface
+
+**See**: [`docs/ARCHITECTURE_EVOLUTION.md`](docs/ARCHITECTURE_EVOLUTION.md) for detailed roadmap
+
+---
 
 ## 🧪 Development
+
 ```bash
 # Run tests
-pytest
+pytest tests/ -v
 
 # Format code
-black agent/ tests/
+black orchestrator/ capabilities/ agent/ tests/
 
 # Type check
-mypy agent/
+mypy orchestrator/ capabilities/ agent/
 
 # Lint
-ruff check agent/
+ruff check orchestrator/ capabilities/ agent/
 ```
+
+---
+
+## 🎓 Learning Resources
+
+**Key Files to Understand the System**:
+1. `.github/copilot-instructions.md` - Comprehensive coding guidance
+2. `docs/STRUCTURE_VISUAL_GUIDE.md` - Architecture diagrams and data flow
+3. `docs/ARCHITECTURE_EVOLUTION.md` - Design decisions and future plans
+4. `capabilities/README.md` - How to add new capabilities
+5. `orchestrator/orchestrator_agent.py` - Main orchestrator implementation
+6. `capabilities/databricks/capability.py` - Reference capability implementation
+
+**Important Concepts**:
+- **agent/ is ACTIVE**: Not deprecated, does actual deployment work
+- **capabilities/ is Wrapper**: Provides standard interface to orchestrator
+- **Tool Registry Pattern**: Dynamic registration, scales to 100+ tools
+- **Capability Registry**: Prevents LLM hallucination of invalid capabilities
+- **MAF Tool Calling**: Must pass actual functions, not JSON schemas
+
+---
 
 ## 📝 License
 

@@ -3,30 +3,18 @@ AI Agent for Databricks Infrastructure Provisioning.
 
 This package provides an LLM-powered agent that automates Databricks workspace
 provisioning in Azure using Terraform.
+
+NOTE: This is now a thin compatibility layer. The actual implementation has moved
+to capabilities.databricks.
+For maximum compatibility, import from capabilities.databricks directly in new code.
 """
 
 __version__ = "0.1.0"
 
-from .decision_engine import DecisionEngine
+# Only export InfrastructureAgent (the thin wrapper)
+# For other classes, import directly from capabilities.databricks
 from .infrastructure_agent import InfrastructureAgent
-from .intent_recognizer import IntentRecognizer
-from .models import (
-    DeploymentResult,
-    InfrastructureDecision,
-    InfrastructureRequest,
-    TerraformFiles,
-)
-from .terraform_executor import TerraformExecutor
-from .terraform_generator import TerraformGenerator
 
 __all__ = [
-    "InfrastructureRequest",
-    "InfrastructureDecision",
-    "DeploymentResult",
-    "TerraformFiles",
-    "IntentRecognizer",
-    "DecisionEngine",
-    "TerraformExecutor",
-    "TerraformGenerator",
     "InfrastructureAgent",
 ]

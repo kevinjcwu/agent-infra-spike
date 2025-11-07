@@ -10,7 +10,8 @@ import logging
 
 from openai import AzureOpenAI
 
-from .config import Config
+from agent.config import Config
+
 from .models import InfrastructureRequest
 
 logger = logging.getLogger(__name__)

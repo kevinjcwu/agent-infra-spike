@@ -14,8 +14,8 @@ class TestConfig:
         """Test getting small CPU instance types."""
         instance_types = Config.get_instance_types(enable_gpu=False, size="small")
 
-        assert instance_types["driver"] == "Standard_DS3_v2"
-        assert instance_types["worker"] == "Standard_DS3_v2"
+        assert instance_types["driver"] == "Standard_D4s_v5"  # Updated to v5
+        assert instance_types["worker"] == "Standard_D4s_v5"
 
     def test_instance_types_cpu_medium(self):
         """Test getting medium CPU instance types."""
@@ -97,13 +97,13 @@ class TestConfig:
         """Test cluster configuration mappings."""
         dev_config = Config.CLUSTER_CONFIG["dev"]
         assert dev_config["min_workers"] == 1
-        assert dev_config["max_workers"] == 4
-        assert dev_config["autotermination_minutes"] == 30
+        assert dev_config["max_workers"] == 2  # Updated from 4 (cost optimization)
+        assert dev_config["autotermination_minutes"] == 10  # Updated from 30
 
         prod_config = Config.CLUSTER_CONFIG["prod"]
-        assert prod_config["min_workers"] == 2
-        assert prod_config["max_workers"] == 16
-        assert prod_config["autotermination_minutes"] == 120
+        assert prod_config["min_workers"] == 1  # Updated from 2
+        assert prod_config["max_workers"] == 4  # Updated from 16 (cost optimization)
+        assert prod_config["autotermination_minutes"] == 10  # Updated from 120
 
     def test_spark_versions(self):
         """Test Spark version mappings."""

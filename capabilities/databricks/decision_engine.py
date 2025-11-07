@@ -7,7 +7,8 @@ about instance types, SKUs, cluster sizes, and cost estimates.
 
 import logging
 
-from .config import Config
+from agent.config import Config
+
 from .models import InfrastructureDecision, InfrastructureRequest
 
 logger = logging.getLogger(__name__)

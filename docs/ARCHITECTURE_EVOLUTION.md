@@ -10,24 +10,322 @@
 
 ### Architecture Overview
 ```
-User Input → Intent Recognizer → Decision Engine → Terraform Generator → Terraform Executor → Deployed Resources
+User Input → Orchestrator → Capability → Agent Modules → Terraform → Deployed Resources
 ```
 
 **Characteristics:**
-- ✅ Single capability: Databricks workspace provisioning
-- ✅ Single-shot interaction: One request → One deployment
-- ✅ Direct OpenAI Function Calling (no framework overhead)
-- ✅ Hardcoded decision logic in Python
-- ✅ Linear workflow with optional approval gate
-- ✅ ~13 minutes end-to-end deployment time
+- ✅ Conversational interface: Multi-turn clarification and parameter gathering
+- ✅ MAF-based orchestration: Microsoft Agent Framework handles conversation context
+- ✅ Tool-enabled: Dynamic tool registration (select_capabilities, suggest_naming, estimate_cost, execute_deployment)
+- ✅ Capability pattern: Pluggable BaseCapability interface for infrastructure provisioning
+- ✅ Single capability: Databricks workspace provisioning (Resource Group + Workspace + Cluster as unit)
+- ✅ Proven deployment: Successfully deployed to Azure in ~13 minutes end-to-end
 
-**Limitations:**
-- ❌ No conversational clarification (assumes all parameters or uses defaults)
-- ❌ No user input for resource naming (auto-generated from team+environment)
-- ❌ Single capability only (cannot provision OpenAI, burn firewall ports, etc.)
-- ❌ No capability discovery or routing
-- ❌ No multi-step validation checkpoints
-- ❌ Tightly coupled components
+**Current Implementation Status:**
+- ✅ Phase 0: MAF integration with Azure OpenAI (completed)
+- ✅ Phase 1: Multi-turn conversational orchestrator with tools (completed)
+- ✅ Phase 1.5: Tool Registry pattern for scalable tool management (completed)
+- ✅ Phase 1.6: Capability Registry pattern for hallucination prevention (completed)
+- ✅ Phase 2: Capability integration with BaseCapability interface (completed)
+- ✅ Actual Azure deployment: Verified working with real infrastructure
+
+**Remaining Spike Limitations:**
+- ⚠️ Single capability only (Databricks) - by design for spike
+- ⚠️ In-memory conversation state (lost on restart)
+- ⚠️ No multi-capability workflows
+- ⚠️ Basic error handling (no rollback orchestration)
+
+---
+
+### Understanding Current Architecture: `agent/` vs `capabilities/`
+
+**TL;DR**: `agent/` contains the actual deployment code, `capabilities/` provides a standard interface wrapper so the orchestrator can invoke it in a pluggable way. They work together.
+
+#### `agent/` Directory - The Real Worker (ACTIVE)
+
+This is where all the **actual deployment logic** lives:
+
+```
+agent/
+├── intent_recognizer.py      # LLM: Parse natural language → InfrastructureRequest
+├── decision_engine.py         # Logic: GPU or CPU? Premium or Standard? Sizing?
+├── terraform_generator.py     # Generate: Create Terraform HCL from decisions
+├── terraform_executor.py      # Execute: Run terraform init/plan/apply
+├── models.py                  # Data: InfrastructureRequest, InfrastructureDecision
+└── config.py                  # Config: Azure credentials and settings
+```
+
+**What it deploys (as one atomic unit)**:
+1. Azure Resource Group (e.g., `rg-ml-team-prod`)
+2. Azure Databricks Workspace (e.g., `ml-prod`)
+3. Databricks Cluster inside workspace (e.g., `ml-prod-cluster`)
+
+**Status**: ✅ **ACTIVE** - This code is running in production and does all deployment work
+
+#### `capabilities/` Directory - The Interface Wrapper (NEW)
+
+This provides a **standard interface** for the orchestrator:
+
+```
+capabilities/
+├── base.py                           # BaseCapability interface
+└── databricks/
+    └── capability.py                 # DatabricksCapability wraps agent/
+```
+
+**What `capabilities/databricks/capability.py` does**:
+```python
+class DatabricksCapability(BaseCapability):
+    def __init__(self):
+        # Import and instantiate agent modules
+        self.intent_recognizer = IntentRecognizer()      # from agent/
+        self.decision_engine = DecisionEngine()          # from agent/
+        self.terraform_generator = TerraformGenerator()  # from agent/
+        self.terraform_executor = TerraformExecutor()    # from agent/
+
+    async def plan(self, context: CapabilityContext) -> CapabilityPlan:
+        """Generate deployment plan (dry-run)"""
+        # Step 1: Parse parameters using agent/intent_recognizer.py
+        request = self.intent_recognizer.recognize_intent(...)
+
+        # Step 2: Make configuration decisions using agent/decision_engine.py
+        decision = self.decision_engine.make_decision(request)
+
+        # Step 3: Generate Terraform using agent/terraform_generator.py
+        terraform_files = self.terraform_generator.generate(decision)
+
+        # Step 4: Run terraform plan using agent/terraform_executor.py
+        plan_result = self.terraform_executor.execute_deployment(dry_run=True)
+
+        # Step 5: Package as standard CapabilityPlan
+        return CapabilityPlan(
+            resources=...,
+            estimated_cost=...,
+            terraform_details=...
+        )
+
+    async def execute(self, plan: CapabilityPlan) -> CapabilityResult:
+        """Execute approved plan"""
+        # Use agent/terraform_executor.py for actual deployment
+        result = self.terraform_executor.execute_deployment(dry_run=False)
+        return CapabilityResult(success=True, outputs=result.outputs)
+```
+
+**Status**: ✅ **NEW WRAPPER** - Adds standard interface, delegates all work to agent/
+
+#### Why This Design?
+
+**Problem Solved**: Orchestrator and agent had incompatible interfaces
+
+**Before**:
+```python
+# Orchestrator (MAF-based, async, conversational)
+orchestrator.process_message("I need Databricks")
+    ↓
+    ❌ How do we call the agent?
+    ❌ Agent expects different input format
+    ❌ Agent doesn't support plan-then-execute flow
+```
+
+**After**:
+```python
+# Orchestrator → Capability → Agent
+orchestrator.execute_capability("provision_databricks", params)
+    ↓
+capability.plan(context)  # Standard interface
+    ↓
+agent modules do actual work:
+  - intent_recognizer.recognize_intent()
+  - decision_engine.make_decision()
+  - terraform_generator.generate()
+  - terraform_executor.execute_deployment()
+```
+
+**Benefits**:
+1. **Orchestrator stays simple**: Just calls `capability.plan()` and `capability.execute()`
+2. **Agent code unchanged**: All Databricks logic remains exactly as it was
+3. **Extensible**: Want OpenAI provisioning? Create `capabilities/openai/` with same interface
+4. **Testable**: Each layer can be tested independently
+
+#### Data Flow: User Request → Deployed Infrastructure
+
+```
+User: "I need Databricks for ML team in production"
+    ↓
+┌─────────────────────────────────────────────────────────────┐
+│ ORCHESTRATOR (orchestrator/orchestrator_agent.py)          │
+│ • Multi-turn conversation (MAF framework)                   │
+│ • Uses tools: select_capabilities, suggest_naming,          │
+│              estimate_cost, execute_deployment              │
+│ • Gathers parameters: team, environment, region, names      │
+│ • Calls: capability.plan() then capability.execute()        │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ CAPABILITY WRAPPER (capabilities/databricks/capability.py)  │
+│                                                             │
+│ plan() method:                                              │
+│   1. Build request text from context parameters            │
+│   2. Call agent/intent_recognizer.py                        │
+│   3. Call agent/decision_engine.py                          │
+│   4. Call agent/terraform_generator.py                      │
+│   5. Call agent/terraform_executor.py (dry-run)             │
+│   6. Extract resources, costs, terraform files              │
+│   7. Return CapabilityPlan                                  │
+│                                                             │
+│ execute() method:                                           │
+│   1. Reconstruct TerraformFiles from plan                   │
+│   2. Call agent/terraform_executor.py (apply)               │
+│   3. Return CapabilityResult with workspace URL             │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ AGENT MODULES (agent/)                                      │
+│                                                             │
+│ intent_recognizer.py:                                       │
+│   • Parse: "ML team prod" → InfrastructureRequest           │
+│                                                             │
+│ decision_engine.py:                                         │
+│   • Decide: ML workload → GPU instances (NC6s_v3)           │
+│   • Decide: Production → Premium Databricks SKU             │
+│   • Calculate: Cluster sizing (2-8 workers)                 │
+│                                                             │
+│ terraform_generator.py:                                     │
+│   • Generate: main.tf, variables.tf, outputs.tf,            │
+│              provider.tf, terraform.tfvars                  │
+│   • Use templates: templates/*.tf.j2                        │
+│                                                             │
+│ terraform_executor.py:                                      │
+│   • Write files to working directory                        │
+│   • Run: terraform init                                     │
+│   • Run: terraform plan (dry-run) or apply (execute)       │
+│   • Parse outputs: workspace_url, workspace_id              │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ AZURE RESOURCES (Deployed)                                  │
+│ 1. Resource Group: rg-ml-team-prod                          │
+│ 2. Databricks Workspace: ml-prod                            │
+│    URL: https://adb-xxxx.azuredatabricks.net                │
+│ 3. Databricks Cluster: ml-prod-cluster (GPU instances)      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Is `agent/` Deprecated?
+
+**NO!** ❌
+
+The `agent/` directory is **ACTIVE** and does all the deployment work. The "deprecated" comment in earlier docs was **aspirational** (thinking ahead to possible future refactoring), not actual current status.
+
+**Current Reality**:
+- ✅ `agent/` code is **ACTIVE** - runs in production
+- ✅ `capabilities/` code **WRAPS** agent modules
+- ✅ They work **TOGETHER** - not replacing each other
+
+**Future Possibility** (Phase 4+, maybe):
+- 🤔 Could refactor agent modules directly into capabilities/databricks/
+- 🤔 Could extract common utilities to capabilities/common/
+- 🤔 Could keep agent/ as is (if it works, why change it?)
+
+**Decision for Spike**: Keep `agent/` as is. It's proven, tested, and works perfectly. The capability wrapper adds exactly what we need (standard interface) without requiring refactoring.
+
+#### Single Capability Design Decision
+
+**Current**: Deploy 3 resources as one atomic unit
+
+```
+DatabricksCapability
+    ↓
+Provisions (all together):
+    1. Azure Resource Group
+    2. Azure Databricks Workspace
+    3. Databricks Cluster
+```
+
+**Why Not Separate Capabilities?**
+
+**Option 1: Single Capability** ✅ (Current)
+```
+capabilities/databricks/  # Deploys RG + Workspace + Cluster together
+```
+
+**Pros**:
+- Simple: One capability = one user request
+- Logical: Can't have cluster without workspace, workspace without RG
+- Atomic: Deploy or rollback as a unit
+- Matches user intent: "I need Databricks" = workspace + cluster ready to use
+
+**Option 2: Granular Capabilities** ❌ (Too Complex)
+```
+capabilities/azure_resource_group/
+capabilities/databricks_workspace/
+capabilities/databricks_cluster/
+```
+
+**Cons**:
+- Complex: Orchestrator must coordinate 3 capabilities
+- Dependencies: Cluster requires workspace ID, workspace requires RG name
+- User confusion: "I just wanted Databricks, why 3 requests?"
+- Error-prone: What if workspace succeeds but cluster fails?
+
+**Recommendation**: ✅ Keep single capability for spike. This is the right design for the use case.
+
+---
+
+### Current File Structure
+
+```
+agent-infra-spike/
+├── orchestrator/                    # MAF-based conversational orchestrator
+│   ├── __init__.py
+│   ├── orchestrator_agent.py        # Main conversational agent
+│   ├── capability_registry.py       # Infrastructure capability validation
+│   ├── tool_manager.py              # Dynamic tool registration system
+│   ├── tools.py                     # Orchestrator tools (4 tools implemented)
+│   └── models.py                    # Orchestrator data models
+│
+├── capabilities/                    # Pluggable infrastructure capabilities
+│   ├── __init__.py                  # Exports BaseCapability, data models
+│   ├── base.py                      # BaseCapability interface definition
+│   │                                # (CapabilityContext, CapabilityPlan, CapabilityResult)
+│   └── databricks/                  # Databricks provisioning capability
+│       ├── __init__.py
+│       └── capability.py            # DatabricksCapability wraps agent/
+│
+├── agent/                           # Actual deployment code (ACTIVE)
+│   ├── __init__.py
+│   ├── infrastructure_agent.py      # Legacy single-shot interface
+│   ├── intent_recognizer.py         # LLM-based request parsing
+│   ├── decision_engine.py           # Configuration decision logic
+│   ├── terraform_generator.py       # HCL file generation from templates
+│   ├── terraform_executor.py        # Terraform CLI execution
+│   ├── models.py                    # InfrastructureRequest, Decision, Result
+│   └── config.py                    # Azure credentials and settings
+│
+├── templates/                       # Terraform Jinja2 templates
+│   ├── main.tf.j2                   # Resource definitions
+│   ├── variables.tf.j2              # Variable declarations
+│   ├── outputs.tf.j2                # Output definitions
+│   ├── provider.tf.j2               # Azure provider config
+│   └── terraform.tfvars.j2          # Variable values
+│
+├── cli_maf.py                       # 🎯 Conversational CLI (USE THIS)
+├── tests/                           # Test suite organized by phase
+│   ├── test_orchestrator.py         # Phase 1: Orchestrator + tools
+│   ├── test_capability_integration.py  # Phase 2: Capability integration
+│   ├── test_maf_setup.py            # Phase 0: MAF validation
+│   └── test_*.py                    # Legacy agent tests
+│
+└── docs/                            # Documentation
+    ├── PRD.md                       # Product requirements
+    ├── ARCHITECTURE_EVOLUTION.md    # This file
+    ├── MAF_RESEARCH_AND_IMPLEMENTATION_PLAN.md
+    └── implementation_status/       # Phase-by-phase progress
+
+```
 
 ---
 
@@ -753,74 +1051,42 @@ Create a **production-quality spike** that demonstrates:
 3. Capability-based architecture
 4. Clean, scalable code structure
 
-### Proposed Structure
+### Implementation Status
 
-```
-agent-infra-spike/
-├── orchestrator/                    # NEW: MAF-based orchestrator
-│   ├── __init__.py
-│   ├── orchestrator_agent.py        # Main MAF orchestrator agent
-│   ├── conversation_manager.py      # Multi-turn conversation logic
-│   ├── capability_registry.py       # Capability discovery & routing
-│   └── models.py                    # Orchestrator data models
-│
-├── capabilities/                    # NEW: Pluggable capabilities
-│   ├── __init__.py
-│   ├── base.py                      # Base capability interface
-│   │
-│   └── databricks/                  # Refactored current implementation
-│       ├── __init__.py
-│       ├── capability.py            # Capability entry point (MAF agent)
-│       ├── intent_recognizer.py     # Moved from agent/
-│       ├── decision_engine.py       # Moved from agent/
-│       ├── terraform_generator.py   # Moved from agent/
-│       ├── terraform_executor.py    # Moved from agent/
-│       └── models.py                # Databricks-specific models
-│
-├── agent/                           # DEPRECATED: Will be removed after migration
-│   └── [current implementation]    # Keep for reference during transition
-│
-├── cli.py                           # UPDATED: Route to orchestrator
-├── templates/                       # Keep as-is (used by capabilities)
-└── tests/                           # NEW: Tests for orchestrator + capabilities
-    ├── test_orchestrator.py
-    └── capabilities/
-        └── test_databricks_capability.py
-```
+**✅ COMPLETED PHASES:**
 
-### Implementation Approach
+**Phase 0: MAF Foundation** ✅
+- Installed Microsoft Agent Framework (MAF) v2025-03-01-preview
+- Validated Azure OpenAI connectivity with MAF
+- Created basic orchestrator agent structure
+- Implemented conversation loop
 
-**Phase 1: Set up MAF Foundation** (1-2 days)
-- Install Microsoft Agent Framework
-- Create basic orchestrator agent structure
-- Implement simple conversation loop
-- Test with "echo" capability
+**Phase 1: Conversational Orchestrator** ✅
+- Multi-turn conversation with clarifying questions
+- Natural language parameter gathering
+- Conversation context managed by MAF automatically
 
-**Phase 2: Refactor Databricks as Capability** (2-3 days)
-- Move current implementation to `capabilities/databricks/`
-- Wrap in MAF agent pattern
-- Maintain all existing functionality
-- Ensure tests still pass
+**Phase 1.5: Tool Registry Pattern** ✅
+- Dynamic tool registration with decorators (`@tool_manager.register`)
+- Auto-schema generation from type hints
+- Four tools implemented:
+  - `select_capabilities`: Validate capability names
+  - `suggest_naming`: Generate Azure-compliant resource names
+  - `estimate_cost`: Calculate monthly cost breakdown
+  - `execute_deployment`: Trigger actual deployment
 
-**Phase 3: Add Conversational Flow** (2-3 days)
-- Implement clarifying questions (RG name, constraints)
-- Add smart naming suggestions
-- Build approval workflow with customization
-- Natural language interaction
+**Phase 1.6: Capability Registry** ✅
+- Prevents LLM hallucination by validating capability names
+- Registry of allowed infrastructure capabilities
+- Semantic understanding (LLM) + validation (registry)
 
-**Phase 4: Capability Registry** (1-2 days)
-- Build capability discovery system
-- Implement routing logic
-- Add "propose and confirm" pattern
-- Test with single capability (Databricks)
+**Phase 2: Capability Integration** ✅
+- Created BaseCapability interface (plan/execute lifecycle)
+- Refactored Databricks deployment as DatabricksCapability
+- Capability wraps existing agent/ modules
+- Successful Azure deployment (13 minutes end-to-end)
 
-**Phase 5: Polish & Documentation** (1 day)
-- Clean up code structure
-- Add inline documentation
-- Update README with new architecture
-- Prepare demo/presentation materials
-
-**Total Estimate:** 7-11 days for production-quality spike
+**🎯 Current State:** Spike complete with working end-to-end deployment
 
 ---
 
@@ -891,29 +1157,140 @@ See detailed implementation plan in: `/docs/MAF_RESEARCH_AND_IMPLEMENTATION_PLAN
 
 ### Immediate Actions (Next Session):
 
-**Phase 0: Environment Setup** (~1-2 hours)
-1. Install `agent-framework --pre`
-2. Create and run `tests/test_maf_setup.py`
-3. Verify Azure OpenAI connectivity with MAF
-4. Review MAF GitHub examples
-5. Create feature branch: `feature/maf-phase0-setup`
+---
 
-**After Phase 0 validation** → Proceed to Phase 1 (Conversational Orchestrator)
+## Next Steps: From Spike to Production Platform
 
-### Implementation Timeline:
-- **Phase 0**: Environment setup (1-2 hours) ← START HERE
-- **Phase 1**: Conversational orchestrator (2-3 days)
-- **Phase 2**: Capability refactoring (2-3 days)
-- **Phase 3**: Capability registry (1-2 days)
-- **Phase 4**: Integration & demo (2 days)
-- **Total**: ~7-10 days with testing and validation
+### Spike Validation Complete ✅
 
-### Questions Answered:
-- Q10: Timeline → Phase-by-phase validation, no hard deadline
-- Q11: MAF Docs → Researched and documented in MAF_RESEARCH_AND_IMPLEMENTATION_PLAN.md
-- Q12: Databricks focus → ✅ Structure supports easy capability additions
-- Q13: Demo requirements → All features (conversation, routing, deployment, code walkthrough)
+The spike successfully demonstrated:
+- ✅ MAF-based conversational orchestration
+- ✅ Tool-enabled multi-turn conversations
+- ✅ Capability-based architecture pattern
+- ✅ End-to-end Azure deployment (verified working)
+- ✅ Clean, maintainable code structure
 
-**Ready to execute Phase 0?** Let me know and I'll start implementation! 🚀
+**Deployment Proof:**
+- Workspace: `https://adb-4412170593674511.11.azuredatabricks.net`
+- Resource Group: `rg-e2e-deploy-dev`
+- Duration: ~13 minutes (785 seconds)
+
+### Recommended Next Phases (Post-Spike)
+
+#### Phase 3: State Persistence & Robustness
+**Goal:** Production-grade state management and error handling
+
+**Tasks:**
+- [ ] File-based or database-backed conversation state
+- [ ] Resume interrupted deployments
+- [ ] Comprehensive error handling with user-friendly messages
+- [ ] Rollback capability on deployment failures
+- [ ] Audit logging for all operations
+
+**Duration:** 2-3 weeks
+
+---
+
+#### Phase 4: Second Capability (Multi-Capability Validation)
+**Goal:** Prove platform works with multiple infrastructure types
+
+**Candidate Capabilities:**
+- Azure OpenAI provisioning (LLM deployments)
+- Azure Firewall port management
+- Azure Storage account with access policies
+- Azure ML workspace provisioning
+
+**Tasks:**
+- [ ] Implement second capability following BaseCapability interface
+- [ ] Test orchestrator with multi-capability workflows
+- [ ] Add capability dependency management
+- [ ] Implement partial success handling
+
+**Duration:** 2-3 weeks
+
+---
+
+#### Phase 5: Enterprise Features
+**Goal:** Production-ready platform for team deployment
+
+**Tasks:**
+- [ ] Role-based access control (who can provision what)
+- [ ] Cost budgets and approval workflows
+- [ ] Monitoring and alerting integration
+- [ ] Jira/ServiceNow ticket integration
+- [ ] Self-service portal or Slack/Teams bot interface
+- [ ] Comprehensive documentation and runbooks
+
+**Duration:** 4-6 weeks
+
+---
+
+### Open Questions for Production Evolution
+
+#### Q1: State Management Strategy
+- **File-based**: Simple, works for small teams
+- **Database**: Scalable, supports concurrent users, audit trail
+- **Azure Storage**: Cloud-native, good for serverless deployment
+
+**Recommendation:** Start with file-based for Phase 3, migrate to database in Phase 5
+
+#### Q2: Approval Workflow Integration
+- **Built-in**: Simple approval prompts (current spike approach)
+- **External**: Jira/ServiceNow ticket creation and status polling
+- **Hybrid**: Built-in for dev, external for prod deployments
+
+**Recommendation:** Hybrid approach for flexibility
+
+#### Q3: Multi-Capability Dependencies
+**Scenario:** User needs OpenAI capability but it requires firewall rules
+
+**Options:**
+- Orchestrator automatically detects dependencies
+- User explicitly requests both capabilities
+- Capability can invoke other capabilities
+
+**Recommendation:** Start with explicit requests, add dependency detection in Phase 5
+
+#### Q4: Deployment Patterns
+- **Single-tenant**: Each user gets their own orchestrator instance
+- **Multi-tenant**: Shared orchestrator with session isolation
+- **Serverless**: Azure Functions + durable orchestration
+
+**Recommendation:** Single-tenant for Phase 3-4, evaluate multi-tenant for Phase 5
+
+---
+
+### Timeline Estimates
+
+**Phase 3 (State + Robustness):** 2-3 weeks
+**Phase 4 (Second Capability):** 2-3 weeks
+**Phase 5 (Enterprise Features):** 4-6 weeks
+
+**Total to Production:** 8-12 weeks with testing and iteration
+
+---
+
+### Success Metrics
+
+**Spike (Current):** ✅ Complete
+- Working deployment from conversation to infrastructure
+- Clean architecture with extensibility points
+- Documentation for handoff
+
+**Phase 3:** State + Robustness
+- Can resume interrupted deployments
+- Error recovery without manual intervention
+- Audit trail for all operations
+
+**Phase 4:** Multi-Capability
+- Successfully orchestrate 2+ different infrastructure types
+- Handle inter-capability dependencies
+- Partial success workflows
+
+**Phase 5:** Enterprise Production
+- 10+ capabilities available
+- 50+ successful deployments
+- < 5% failure rate
+- User satisfaction > 4/5
 
 

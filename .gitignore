@@ -1,2 +1,48 @@
+# Environment variables
 .env
-.env
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Linting and formatting
+.ruff_cache/
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+eggs/
+wheels/
+
+# Terraform working directories (generated during testing/deployment)
+terraform_workspaces/
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars.json
+
+# Logs
+*.log

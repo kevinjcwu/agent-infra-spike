@@ -3,18 +3,26 @@ Main Infrastructure Agent orchestrator.
 
 This module provides the InfrastructureAgent class that orchestrates the entire
 provisioning pipeline from natural language request to deployed infrastructure.
+
+NOTE: This is a thin wrapper around capabilities.databricks for backward compatibility.
+New code should use the orchestrator + capability pattern directly.
 """
 
 import logging
 import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING
 
-from agent.decision_engine import DecisionEngine
-from agent.intent_recognizer import IntentRecognizer
-from agent.models import DeploymentResult
-from agent.terraform_executor import TerraformExecutor
-from agent.terraform_generator import TerraformGenerator
+# Use TYPE_CHECKING to avoid circular import at runtime
+if TYPE_CHECKING:
+    from capabilities.databricks import (
+        DecisionEngine,
+        DeploymentResult,
+        IntentRecognizer,
+        TerraformExecutor,
+        TerraformGenerator,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +57,10 @@ class InfrastructureAgent:
 
     def __init__(
         self,
-        intent_recognizer: IntentRecognizer | None = None,
-        decision_engine: DecisionEngine | None = None,
-        terraform_generator: TerraformGenerator | None = None,
-        terraform_executor: TerraformExecutor | None = None,
+        intent_recognizer: "IntentRecognizer | None" = None,
+        decision_engine: "DecisionEngine | None" = None,
+        terraform_generator: "TerraformGenerator | None" = None,
+        terraform_executor: "TerraformExecutor | None" = None,
         working_dir: Path | None = None,
     ):
         """
@@ -69,6 +77,14 @@ class InfrastructureAgent:
                               If None, creates default instance.
             working_dir: Directory for Terraform files. If None, uses temp dir.
         """
+        # Import here to avoid circular import
+        from capabilities.databricks import (
+            DecisionEngine,
+            IntentRecognizer,
+            TerraformExecutor,
+            TerraformGenerator,
+        )
+
         self.intent_recognizer = intent_recognizer or IntentRecognizer()
         self.decision_engine = decision_engine or DecisionEngine()
         self.terraform_generator = terraform_generator or TerraformGenerator()
@@ -82,7 +98,7 @@ class InfrastructureAgent:
         user_message: str,
         auto_approve: bool = False,
         dry_run: bool = False,
-    ) -> DeploymentResult:
+    ) -> "DeploymentResult":
         """
         Provision a Databricks workspace from natural language request.
 
@@ -221,6 +237,9 @@ class InfrastructureAgent:
             logger.error(f"Total time: {total_time:.1f} seconds")
             logger.error("=" * 80)
 
+            # Import here to avoid circular dependency
+            from capabilities.databricks import DeploymentResult
+
             # Return failed result
             return DeploymentResult(
                 success=False,
@@ -237,7 +256,7 @@ class InfrastructureAgent:
         self,
         working_dir: Path,
         auto_approve: bool = False,
-    ) -> DeploymentResult:
+    ) -> "DeploymentResult":
         """
         Destroy a previously provisioned workspace.
 
@@ -282,6 +301,9 @@ class InfrastructureAgent:
             logger.error("✗ DESTRUCTION FAILED")
             logger.error(f"Error: {str(e)}")
             logger.error("=" * 80)
+
+            # Import here to avoid circular dependency
+            from capabilities.databricks import DeploymentResult
 
             return DeploymentResult(
                 success=False,

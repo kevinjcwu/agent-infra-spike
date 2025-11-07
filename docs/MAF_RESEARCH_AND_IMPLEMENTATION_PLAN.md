@@ -184,7 +184,7 @@ CLI → OrchestratorAgent (MAF Agent with workflow)
 | **Workflow** | Capability execution flows | Graph-based orchestration, checkpointing |
 | **Tools/Functions** | Capability registry, validators | Agent can invoke capabilities dynamically |
 | **Human-in-the-loop** | Approval gates | User validation at critical steps |
-| **State Management** | In-memory for now | Track conversation context, workflow progress |
+| **State Management** | MAF built-in conversation context | Conversation history automatic; only store final plan data |
 | **Middleware** | Error handling, logging | Centralized request/response processing |
 
 ---
@@ -249,10 +249,11 @@ if __name__ == "__main__":
 orchestrator/
 ├── __init__.py
 ├── orchestrator_agent.py         # Main MAF agent
-├── conversation_manager.py       # Multi-turn conversation logic
 ├── tools.py                      # Agent tools (capability discovery, etc.)
 └── models.py                     # Orchestrator data models
 ```
+
+**Note**: No separate `conversation_manager.py` needed - MAF agents handle conversation state natively!
 
 **Key Code** (`orchestrator/orchestrator_agent.py`):
 ```python
@@ -275,8 +276,9 @@ class InfrastructureOrchestrator:
 
     def __init__(self):
         self.agent = self._create_agent()
-        self.conversation_history = []
-        self.current_plan = None
+        # MAF agent maintains conversation history internally
+        # Only store structured data we extract from conversation
+        self.current_plan = None  # Will hold final validated plan
 
     def _create_agent(self):
         """Create MAF agent with tools"""
@@ -320,27 +322,18 @@ You: "I'll help you provision a Databricks workspace! A few questions:
         """
         Process user message with conversation context.
 
+        MAF agent automatically maintains conversation history,
+        so we just pass messages and get responses.
+
         Returns orchestrator response (may ask clarifying questions).
         """
-        # Add to conversation history
-        self.conversation_history.append({
-            "role": "user",
-            "content": user_message
-        })
+        # MAF agent handles conversation history internally
+        response = await self.agent.run(user_message)
 
-        # Get agent response (may invoke tools)
-        response = await self.agent.run(
-            user_message,
-            context=self.conversation_history
-        )
+        # Extract response text
+        response_text = response.messages[-1].text if response.messages else str(response)
 
-        # Add to history
-        self.conversation_history.append({
-            "role": "assistant",
-            "content": response
-        })
-
-        return response
+        return response_text
 
     # Tool definitions (agent can call these)
 
@@ -385,11 +378,12 @@ You: "I'll help you provision a Databricks workspace! A few questions:
 
 **Tasks**:
 - [ ] Implement `InfrastructureOrchestrator` class
-- [ ] Add multi-turn conversation handling
+- [ ] Add multi-turn conversation handling (leverage MAF's built-in context)
 - [ ] Implement tool definitions (capability discovery, naming, costs)
-- [ ] Create conversation manager for state tracking
 - [ ] Build CLI integration (`cli_maf.py` - new file, keep old cli.py for reference)
 - [ ] Test multi-turn interactions
+
+**Note**: No separate conversation manager needed - MAF agents handle this automatically!
 
 **Test Scenarios**:
 1. User says "Create Databricks workspace" → Agent asks clarifying questions
@@ -959,21 +953,35 @@ class OpenAICapability(BaseCapability):
 
 **Question**: Use MAF's built-in state or custom?
 
-**Recommendation**: **Use MAF's conversation context (in-memory), add file-based later**
+**Recommendation**: **Use MAF's conversation context (built-in), minimal custom state**
 
 **Rationale**:
-- MAF Agents maintain conversation history automatically
+- **MAF Agents maintain conversation history automatically** - no manual tracking needed
+- Phase 0 validated this works perfectly (Test 5 showed context preservation)
+- Only store structured data extracted from conversation (e.g., final validated plan)
 - Good enough for spike (single-session)
-- Production: Add MAF's checkpointing or custom DB persistence
+- Production: Can add MAF's checkpointing or custom DB persistence later if needed
+
+**What We DON'T Need in Phase 1**:
+- ❌ Manual conversation history tracking - MAF does this
+- ❌ ConversationManager class - unnecessary, MAF agent IS the manager
+- ❌ Persistent state/database - single CLI session is fine
+- ❌ Complex state machine - MAF handles conversation flow
 
 **Implementation**:
 ```python
-# Phase 1-4: In-memory via MAF Agent
-agent = client.create_agent(...)
-response = await agent.run(message, context=conversation_history)
-# MAF handles context automatically
+# Phase 1: Let MAF handle conversation state
+class InfrastructureOrchestrator:
+    def __init__(self):
+        self.agent = self._create_agent()
+        self.current_plan = None  # Only store final extracted plan
 
-# Future: File-based checkpointing
+    async def process_request(self, user_message: str) -> str:
+        # MAF agent maintains full conversation context internally
+        response = await self.agent.run(user_message)
+        return response.messages[-1].text
+
+# Future (Phase 3+): Add persistence if multi-session needed
 workflow.save_checkpoint("session_123.json")
 workflow.load_checkpoint("session_123.json")
 ```

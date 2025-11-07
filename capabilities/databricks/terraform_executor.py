@@ -11,7 +11,8 @@ import subprocess
 import time
 from pathlib import Path
 
-from .config import Config
+from agent.config import Config
+
 from .models import DeploymentResult, TerraformFiles
 
 logger = logging.getLogger(__name__)

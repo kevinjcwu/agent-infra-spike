@@ -4,7 +4,7 @@ Tests for data models.
 Tests the Pydantic dataclasses to ensure proper validation and serialization.
 """
 
-from agent.models import (
+from capabilities.databricks import (
     DeploymentResult,
     InfrastructureDecision,
     InfrastructureRequest,
@@ -181,7 +181,7 @@ class TestDeploymentResult:
             workspace_id="/subscriptions/sub-id/resourceGroups/rg/...",
             resource_group_name="rg-ml-prod",
             firewall_ip="20.30.40.50",
-            cluster_id="1234-567890-abcdef",
+            instance_pool_id="1234-567890-abcdef",  # Updated from cluster_id
             deployment_time_seconds=1205.3,
             terraform_outputs={
                 "workspace_url": "https://adb-123456.azuredatabricks.net",
@@ -192,6 +192,6 @@ class TestDeploymentResult:
 
         assert result.success is True
         assert result.firewall_ip == "20.30.40.50"
-        assert result.cluster_id == "1234-567890-abcdef"
+        assert result.instance_pool_id == "1234-567890-abcdef"  # Updated from cluster_id
         assert result.terraform_outputs is not None
         assert len(result.terraform_outputs) == 2

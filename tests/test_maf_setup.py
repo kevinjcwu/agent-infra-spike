@@ -7,6 +7,8 @@ is ready for Phase 1 implementation.
 
 Usage:
     python tests/test_maf_setup.py
+    OR
+    pytest tests/test_maf_setup.py
 """
 
 import asyncio
@@ -14,12 +16,14 @@ import os
 import sys
 from typing import Tuple
 
+import pytest
 from dotenv import load_dotenv
 
 # Load environment variables with override to ensure latest values
 load_dotenv(override=True)
 
 
+@pytest.mark.asyncio
 async def test_maf_import():
     """Test 1: Verify MAF package imports correctly"""
     print("\n" + "=" * 70)
@@ -41,6 +45,7 @@ async def test_maf_import():
         return False
 
 
+@pytest.mark.asyncio
 async def test_azure_openai_connectivity():
     """Test 2: Verify Azure OpenAI connectivity with MAF"""
     print("\n" + "=" * 70)
@@ -91,6 +96,7 @@ async def test_azure_openai_connectivity():
         return False
 
 
+@pytest.mark.asyncio
 async def test_basic_agent_creation():
     """Test 3: Create a basic MAF agent"""
     print("\n" + "=" * 70)
@@ -127,6 +133,7 @@ async def test_basic_agent_creation():
         return False
 
 
+@pytest.mark.asyncio
 async def test_agent_conversation():
     """Test 4: Test basic agent conversation"""
     print("\n" + "=" * 70)
@@ -177,6 +184,7 @@ async def test_agent_conversation():
         return False
 
 
+@pytest.mark.asyncio
 async def test_infrastructure_agent_scenario():
     """Test 5: Simulate infrastructure orchestrator conversation"""
     print("\n" + "=" * 70)
@@ -238,6 +246,7 @@ Keep responses concise for testing purposes."""
         return False
 
 
+@pytest.mark.asyncio
 async def test_existing_agent_compatibility():
     """Test 6: Verify existing agent code still works"""
     print("\n" + "=" * 70)
@@ -246,10 +255,9 @@ async def test_existing_agent_compatibility():
 
     try:
         # Import our existing agent code
-        from agent.intent_recognizer import IntentRecognizer
-        from agent.models import InfrastructureRequest
+        from capabilities.databricks import InfrastructureRequest, IntentRecognizer
 
-        print(f"✓ Existing agent modules import successfully")
+        print("✓ Existing agent modules import successfully")
 
         # Test that OpenAI client still works (our current implementation)
         from azure.identity import AzureCliCredential, get_bearer_token_provider

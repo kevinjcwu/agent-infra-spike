@@ -10,8 +10,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from agent.infrastructure_agent import InfrastructureAgent
-from agent.models import (
+from agent import InfrastructureAgent
+from capabilities.databricks import (
     DeploymentResult,
     InfrastructureDecision,
     InfrastructureRequest,

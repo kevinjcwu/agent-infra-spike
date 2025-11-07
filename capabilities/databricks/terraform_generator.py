@@ -33,7 +33,8 @@ class TerraformGenerator:
         """
         if templates_dir is None:
             # Default to templates/ directory in project root
-            project_root = Path(__file__).parent.parent
+            # Since we're in capabilities/databricks/, go up 2 levels to project root
+            project_root = Path(__file__).parent.parent.parent
             templates_dir = project_root / "templates"
         else:
             templates_dir = Path(templates_dir)

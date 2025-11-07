@@ -208,21 +208,33 @@ class Config:
     # =============================================================================
 
     @classmethod
-    def validate(cls) -> None:
+    def validate(cls, require_azure_credentials: bool = True) -> None:
         """
         Validate that all required environment variables are set.
+
+        Args:
+            require_azure_credentials: If False, Azure credentials are optional
+                (useful when using Azure CLI authentication via `az login`)
 
         Raises:
             ValueError: If required environment variables are missing.
         """
+        # Always require OpenAI credentials
         required_vars = [
             ("AZURE_OPENAI_ENDPOINT", cls.AZURE_OPENAI_ENDPOINT),
             ("AZURE_OPENAI_API_KEY", cls.AZURE_OPENAI_API_KEY),
-            ("AZURE_SUBSCRIPTION_ID", cls.AZURE_SUBSCRIPTION_ID),
-            ("AZURE_TENANT_ID", cls.AZURE_TENANT_ID),
-            ("AZURE_CLIENT_ID", cls.AZURE_CLIENT_ID),
-            ("AZURE_CLIENT_SECRET", cls.AZURE_CLIENT_SECRET),
         ]
+
+        # Optionally require Azure service principal credentials
+        if require_azure_credentials:
+            required_vars.extend([
+                ("AZURE_SUBSCRIPTION_ID", cls.AZURE_SUBSCRIPTION_ID),
+                ("AZURE_TENANT_ID", cls.AZURE_TENANT_ID),
+                ("AZURE_CLIENT_ID", cls.AZURE_CLIENT_ID),
+                ("AZURE_CLIENT_SECRET", cls.AZURE_CLIENT_SECRET),
+            ])
+        else:
+            logger.info("Azure credentials not required - will use Azure CLI authentication (az login)")
 
         missing_vars = [name for name, value in required_vars if not value]
 
@@ -319,8 +331,9 @@ class Config:
 
 
 # Validate configuration on import
+# Note: Azure credentials are optional if using Azure CLI (az login)
 try:
-    Config.validate()
+    Config.validate(require_azure_credentials=False)
 except ValueError as e:
     logger.warning(f"Configuration validation failed: {e}")
     logger.warning("Some features may not work without proper configuration")

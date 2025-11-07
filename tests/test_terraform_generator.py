@@ -11,8 +11,7 @@ from pathlib import Path
 import pytest
 from jinja2 import TemplateNotFound
 
-from agent.models import InfrastructureDecision
-from agent.terraform_generator import TerraformGenerator
+from capabilities.databricks import InfrastructureDecision, TerraformGenerator
 
 
 class TestTerraformGenerator:

@@ -5,8 +5,7 @@ Tests the DecisionEngine's ability to make appropriate infrastructure
 configuration decisions based on various request parameters.
 """
 
-from agent.decision_engine import DecisionEngine
-from agent.models import InfrastructureRequest
+from capabilities.databricks import DecisionEngine, InfrastructureRequest
 
 
 class TestDecisionEngine:
@@ -32,8 +31,8 @@ class TestDecisionEngine:
         assert decision.databricks_sku == "standard"
         assert decision.enable_gpu is False
         assert decision.min_workers == 1
-        assert decision.max_workers == 4
-        assert decision.autotermination_minutes == 30
+        assert decision.max_workers == 2  # Updated from 4 (cost optimization)
+        assert decision.autotermination_minutes == 10  # Updated from 30
         assert "CPU instances" in decision.justification
 
     def test_prod_ml_workspace_with_gpu(self):
@@ -53,9 +52,9 @@ class TestDecisionEngine:
         assert decision.databricks_sku == "premium"
         assert decision.enable_gpu is True
         assert "NC" in decision.worker_instance_type  # GPU instance
-        assert decision.min_workers == 2
-        assert decision.max_workers == 16
-        assert decision.autotermination_minutes == 120
+        assert decision.min_workers == 1  # Updated from 2 (cost optimization)
+        assert decision.max_workers == 4  # Updated from 16 (cost optimization)
+        assert decision.autotermination_minutes == 10  # Updated from 120
         assert "gpu-ml" in decision.spark_version.lower()
         assert "GPU instances" in decision.justification
         assert "premium" in decision.justification.lower()
@@ -75,9 +74,9 @@ class TestDecisionEngine:
         assert decision.workspace_name == "analytics-staging"
         assert decision.databricks_sku == "standard"
         assert decision.enable_gpu is False
-        assert decision.min_workers == 2
-        assert decision.max_workers == 8
-        assert decision.autotermination_minutes == 60
+        assert decision.min_workers == 1  # Updated from 2 (cost optimization)
+        assert decision.max_workers == 3  # Updated from 8 (cost optimization)
+        assert decision.autotermination_minutes == 10  # Updated from 60
         assert decision.estimated_monthly_cost > 0
 
     def test_cost_limit_enforcement(self):
@@ -178,9 +177,10 @@ class TestDecisionEngine:
         ml_worker = decision_ml.worker_instance_type
         analytics_worker = decision_analytics.worker_instance_type
 
-        # Check that ML uses DS4 or larger, analytics uses DS3
-        assert "DS4" in ml_worker or "DS5" in ml_worker or "NC" in ml_worker
-        assert "DS3" in analytics_worker
+        # Check that ML uses DS4/DS5/NC or D4s_v5 or larger
+        assert ("DS4" in ml_worker or "DS5" in ml_worker or "NC" in ml_worker or
+                "D4s_v5" in ml_worker or "D8" in ml_worker or "D16" in ml_worker)
+        assert ("DS3" in analytics_worker or "D4s_v5" in analytics_worker)  # Small instances
 
     def test_cost_breakdown_structure(self):
         """Test that cost breakdown includes all required components."""
