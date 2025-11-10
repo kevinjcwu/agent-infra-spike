@@ -1,10 +1,9 @@
-"""
-Tests for configuration module.
+"""Tests for configuration module.
 
 Tests the Config class and its methods.
 """
 
-from agent.config import Config
+from capabilities.databricks import Config
 
 
 class TestConfig:

@@ -1,28 +1,45 @@
 """Databricks provisioning capability.
 
 Provides infrastructure provisioning for Azure Databricks workspaces and clusters.
+
+Organized in three layers:
+- core/: Business logic (intent parsing, decision making, configuration)
+- models/: Data structures (requests, decisions, results)
+- provisioning/: Infrastructure deployment (Terraform generation and execution)
 """
 
 from .capability import DatabricksCapability
-from .decision_engine import DecisionEngine
-from .intent_recognizer import IntentRecognizer
-from .models import (
+
+# Core business logic
+from .core.config import Config
+from .core.decision_maker import DecisionMaker
+from .core.intent_parser import IntentParser
+
+# Data models
+from .models.schemas import (
     DeploymentResult,
     InfrastructureDecision,
     InfrastructureRequest,
     TerraformFiles,
 )
-from .terraform_executor import TerraformExecutor
-from .terraform_generator import TerraformGenerator
+
+# Provisioning layer
+from .provisioning.terraform.executor import TerraformExecutor
+from .provisioning.terraform.generator import TerraformGenerator
 
 __all__ = [
+    # Main capability
     "DatabricksCapability",
-    "DecisionEngine",
+    # Core
+    "Config",
+    "DecisionMaker",
+    "IntentParser",
+    # Models
     "DeploymentResult",
     "InfrastructureDecision",
     "InfrastructureRequest",
-    "IntentRecognizer",
-    "TerraformExecutor",
     "TerraformFiles",
+    # Provisioning
+    "TerraformExecutor",
     "TerraformGenerator",
 ]

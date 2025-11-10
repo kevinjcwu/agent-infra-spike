@@ -1,5 +1,4 @@
-"""
-Intent recognizer for parsing natural language infrastructure requests.
+"""Intent parser for parsing natural language infrastructure requests.
 
 This module uses Azure OpenAI GPT-4 with function calling to parse user requests
 into structured InfrastructureRequest objects.
@@ -10,16 +9,14 @@ import logging
 
 from openai import AzureOpenAI
 
-from agent.config import Config
-
-from .models import InfrastructureRequest
+from ..models.schemas import InfrastructureRequest
+from .config import Config
 
 logger = logging.getLogger(__name__)
 
 
-class IntentRecognizer:
-    """
-    Parses natural language requests into structured infrastructure requests.
+class IntentParser:
+    """Parses natural language requests into structured infrastructure requests.
 
     Uses Azure OpenAI GPT-4 with function calling to extract structured data
     from user queries like "Create prod workspace for ML team in East US".
@@ -33,8 +30,7 @@ class IntentRecognizer:
         deployment_name: str | None = None,
         temperature: float | None = None,
     ):
-        """
-        Initialize the intent recognizer with Azure OpenAI client.
+        """Initialize the intent parser with Azure OpenAI client.
 
         Args:
             azure_endpoint: Azure OpenAI endpoint URL (defaults to Config)
@@ -57,12 +53,11 @@ class IntentRecognizer:
         )
 
         logger.info(
-            f"IntentRecognizer initialized with deployment: {self.deployment_name}"
+            f"IntentParser initialized with deployment: {self.deployment_name}"
         )
 
     def recognize_intent(self, user_message: str) -> InfrastructureRequest:
-        """
-        Parse a natural language request into a structured InfrastructureRequest.
+        """Parse a natural language request into a structured InfrastructureRequest.
 
         Uses Azure OpenAI function calling to extract structured parameters from
         the user's message.
@@ -77,8 +72,8 @@ class IntentRecognizer:
             ValueError: If the request cannot be parsed or is invalid
 
         Examples:
-            >>> recognizer = IntentRecognizer()
-            >>> request = recognizer.recognize_intent(
+            >>> parser = IntentParser()
+            >>> request = parser.recognize_intent(
             ...     "Create prod workspace for ML team in East US with GPU"
             ... )
             >>> request.environment
@@ -220,8 +215,7 @@ Guidelines:
             raise ValueError(f"Failed to parse infrastructure request: {e}") from e
 
     def _normalize_region(self, region: str) -> str:
-        """
-        Normalize region name to Azure format.
+        """Normalize region name to Azure format.
 
         Args:
             region: Region name (e.g., "East US", "eastus", "east-us")
@@ -230,10 +224,10 @@ Guidelines:
             Normalized region name in Azure format (e.g., "eastus")
 
         Examples:
-            >>> recognizer = IntentRecognizer()
-            >>> recognizer._normalize_region("East US")
+            >>> parser = IntentParser()
+            >>> parser._normalize_region("East US")
             'eastus'
-            >>> recognizer._normalize_region("west-us-2")
+            >>> parser._normalize_region("west-us-2")
             'westus2'
         """
         # Convert to lowercase and remove spaces/hyphens

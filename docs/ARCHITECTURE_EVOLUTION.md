@@ -1,8 +1,10 @@
 # Architecture Evolution: From Single-Purpose Agent to Multi-Capability Platform
 
-**Date**: November 6, 2025
+**Date**: November 6, 2025 (Updated November 10, 2025)
 **Status**: Planning Phase
 **Context**: Evolution from Databricks provisioning spike to enterprise orchestration platform
+
+> **📝 UPDATE (November 10, 2025)**: The architecture has evolved since this document was written. The `agent/` directory has been removed and integrated into `capabilities/databricks/` with a 3-layer architecture (core/models/provisioning). See `docs/DATABRICKS_REFACTORING_SUMMARY.md` for the current structure. This document remains valuable for understanding the architectural journey and future phases.
 
 ---
 

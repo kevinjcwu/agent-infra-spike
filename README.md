@@ -103,9 +103,13 @@ Reduces Databricks workspace provisioning from **3-4 hours (manual)** to **~13 m
                                  │
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                   AGENT MODULES (Deployment Logic)                          │
-│  • IntentRecognizer: Natural language → InfrastructureRequest               │
-│  • DecisionEngine: Configuration decisions (GPU/CPU, SKU, sizing)           │
+│                   DATABRICKS MODULES (3-Layer Architecture)                 │
+│  Core Layer:                                                                │
+│  • IntentParser: Natural language → InfrastructureRequest                   │
+│  • DecisionMaker: Configuration decisions (GPU/CPU, SKU, sizing)            │
+│  Models Layer:                                                              │
+│  • Schemas: Pydantic data classes for type safety                           │
+│  Provisioning Layer:                                                        │
 │  • TerraformGenerator: Jinja2 templates → HCL files                         │
 │  • TerraformExecutor: Run terraform init/plan/apply                         │
 └────────────────────────────────┬────────────────────────────────────────────┘
@@ -129,14 +133,11 @@ Reduces Databricks workspace provisioning from **3-4 hours (manual)** to **~13 m
 
 **Capability Layer** (`capabilities/`):
 - BaseCapability interface (plan/validate/execute/rollback)
-- DatabricksCapability wraps agent modules
+- DatabricksCapability with 3-layer architecture:
+  - Core: Business logic (IntentParser, DecisionMaker, Config)
+  - Models: Data structures (Pydantic schemas)
+  - Provisioning: Infrastructure deployment (Terraform)
 - Pluggable architecture for new infrastructure types
-
-**Agent Layer** (`agent/`):
-- Active deployment code (NOT deprecated)
-- LLM-based intent recognition
-- Business logic for configuration decisions
-- Terraform generation and execution
 
 **See**: [`docs/STRUCTURE_VISUAL_GUIDE.md`](docs/STRUCTURE_VISUAL_GUIDE.md) for detailed diagrams
 
@@ -207,7 +208,7 @@ Reduces Databricks workspace provisioning from **3-4 hours (manual)** to **~13 m
 
 ### Component Details
 
-#### 1. **Intent Recognizer** (`agent/intent_recognizer.py`)
+#### 1. **Intent Parser** (`capabilities/databricks/core/intent_parser.py`)
 - **Technology**: Azure OpenAI GPT-4o with Function Calling
 - **Purpose**: Converts natural language to structured data
 - **How it works**:
@@ -219,7 +220,7 @@ Reduces Databricks workspace provisioning from **3-4 hours (manual)** to **~13 m
   - Input: `"Create dev workspace for test team in East US"`
   - Output: `{"team": "test", "environment": "dev", "region": "eastus", ...}`
 
-#### 2. **Decision Engine** (`agent/decision_engine.py`)
+#### 2. **Decision Maker** (`capabilities/databricks/core/decision_maker.py`)
 - **Technology**: Python business logic
 - **Purpose**: Makes intelligent infrastructure configuration decisions
 - **How it works**:
@@ -232,7 +233,7 @@ Reduces Databricks workspace provisioning from **3-4 hours (manual)** to **~13 m
   - ML + Prod → `Standard_NC6s_v3`, Premium SKU, 2-8 workers
   - Data Engineering + Dev → `Standard_D4s_v5`, Standard SKU, 1-2 workers
 
-#### 3. **Terraform Generator** (`agent/terraform_generator.py`)
+#### 3. **Terraform Generator** (`capabilities/databricks/provisioning/terraform/generator.py`)
 - **Technology**: Jinja2 templating engine
 - **Purpose**: Generates production-ready Terraform HCL files
 - **How it works**:
@@ -241,12 +242,12 @@ Reduces Databricks workspace provisioning from **3-4 hours (manual)** to **~13 m
   - Produces 5 Terraform files ready for execution
 - **Templates**:
   - `provider.tf.j2` → Azure & Databricks provider config
-  - `main.tf.j2` → Resource definitions (RG, workspace, instance pool)
+  - `main.tf.j2` → Resource definitions (RG, workspace, cluster)
   - `variables.tf.j2` → Input variable declarations
   - `outputs.tf.j2` → Output value definitions
   - `terraform.tfvars.j2` → Variable value assignments
 
-#### 4. **Terraform Executor** (`agent/terraform_executor.py`)
+#### 4. **Terraform Executor** (`capabilities/databricks/provisioning/terraform/executor.py`)
 - **Technology**: Python subprocess management
 - **Purpose**: Executes Terraform commands and manages deployment lifecycle
 - **How it works**:
@@ -372,16 +373,19 @@ agent-infra-spike/
 │
 ├── capabilities/                    # Pluggable infrastructure capabilities
 │   ├── base.py                      # BaseCapability interface
-│   └── databricks/
-│       └── capability.py            # Databricks provisioning capability
-│
-├── agent/                           # Deployment logic (ACTIVE)
-│   ├── intent_recognizer.py         # LLM: NL → InfrastructureRequest
-│   ├── decision_engine.py           # Business logic for config decisions
-│   ├── terraform_generator.py       # Jinja2: Decision → HCL
-│   ├── terraform_executor.py        # Terraform CLI wrapper
-│   ├── models.py                    # Data models
-│   └── config.py                    # Azure configuration
+│   └── databricks/                  # Databricks capability (3-layer architecture)
+│       ├── capability.py            # Main orchestrator
+│       ├── README.md                # Capability documentation
+│       ├── core/                    # Business Logic Layer
+│       │   ├── config.py            # Configuration & pricing
+│       │   ├── intent_parser.py     # LLM: NL → InfrastructureRequest
+│       │   └── decision_maker.py    # Configuration decisions
+│       ├── models/                  # Data Models Layer
+│       │   └── schemas.py           # Pydantic data classes
+│       └── provisioning/            # Infrastructure Layer
+│           └── terraform/
+│               ├── generator.py     # Jinja2: Decision → HCL
+│               └── executor.py      # Terraform CLI wrapper
 │
 ├── templates/                       # Terraform Jinja2 templates
 │   ├── main.tf.j2
@@ -390,10 +394,13 @@ agent-infra-spike/
 │   ├── provider.tf.j2
 │   └── terraform.tfvars.j2
 │
-├── tests/                           # Test suite (23 tests, all passing)
+├── tests/                           # Test suite (94 tests, all passing)
 │   ├── test_maf_setup.py            # Phase 0
 │   ├── test_orchestrator.py         # Phase 1
-│   └── test_capability_integration.py # Phase 2
+│   ├── test_capability_integration.py # Phase 2
+│   ├── test_decision_maker.py       # Decision making tests
+│   ├── test_terraform_generator.py  # Terraform generation tests
+│   └── test_terraform_executor.py   # Terraform execution tests
 │
 ├── docs/                            # Documentation
 │   ├── ARCHITECTURE_EVOLUTION.md    # Vision and next phases
@@ -439,7 +446,7 @@ agent-infra-spike/
 
 **Phase 2: Capability Integration**
 - BaseCapability interface (plan/validate/execute/rollback)
-- DatabricksCapability wrapping agent/ modules
+- DatabricksCapability with layered architecture (core/models/provisioning)
 - **Actual Azure deployment verified**
 - 8 tests passing
 
@@ -481,13 +488,13 @@ agent-infra-spike/
 pytest tests/ -v
 
 # Format code
-black orchestrator/ capabilities/ agent/ tests/
+black orchestrator/ capabilities/ tests/
 
 # Type check
-mypy orchestrator/ capabilities/ agent/
+mypy orchestrator/ capabilities/
 
 # Lint
-ruff check orchestrator/ capabilities/ agent/
+ruff check orchestrator/ capabilities/
 ```
 
 ---
@@ -503,8 +510,8 @@ ruff check orchestrator/ capabilities/ agent/
 6. `capabilities/databricks/capability.py` - Reference capability implementation
 
 **Important Concepts**:
-- **agent/ is ACTIVE**: Not deprecated, does actual deployment work
-- **capabilities/ is Wrapper**: Provides standard interface to orchestrator
+- **Three-Layer Architecture**: Core (logic) / Models (data) / Provisioning (infrastructure)
+- **capabilities/databricks/**: Self-contained with all deployment logic
 - **Tool Registry Pattern**: Dynamic registration, scales to 100+ tools
 - **Capability Registry**: Prevents LLM hallucination of invalid capabilities
 - **MAF Tool Calling**: Must pass actual functions, not JSON schemas

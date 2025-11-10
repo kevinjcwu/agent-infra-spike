@@ -156,6 +156,28 @@ class BaseCapability(ABC):
         """Human-readable description of what this capability does."""
         pass
 
+    def get_required_parameters(self) -> list[str]:
+        """Get list of required parameter names for this capability.
+
+        Optional method that capabilities can override to expose their schema.
+        This enables dynamic parameter discovery and validation.
+
+        Returns:
+            List of required parameter names (e.g., ['team', 'environment', 'region'])
+        """
+        return []
+
+    def get_optional_parameters(self) -> dict[str, Any]:
+        """Get dict of optional parameter names and their defaults.
+
+        Optional method that capabilities can override to expose their schema.
+
+        Returns:
+            Dict mapping parameter names to default values
+            (e.g., {'enable_gpu': False, 'workload_type': 'data_engineering'})
+        """
+        return {}
+
     @abstractmethod
     async def plan(self, context: CapabilityContext) -> CapabilityPlan:
         """Generate execution plan from user requirements.

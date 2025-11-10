@@ -19,18 +19,21 @@ This is a spike/POC to build an AI agent that automates infrastructure provision
 - ✅ Phase 1.6: Capability Registry pattern for hallucination prevention
 - ✅ Phase 2: Capability Integration - BaseCapability interface, DatabricksCapability
 - ✅ Restructured to match architecture vision
+- ✅ **November 10, 2025**: Databricks capability refactored to three-layer architecture
 
 **Current Architecture**:
 - `orchestrator/` - MAF-based conversational orchestrator (multi-turn, tool-enabled)
-- `capabilities/` - Pluggable capability system (BaseCapability, Databricks)
-- `agent/` - Legacy Databricks provisioning logic (wrapped by capabilities)
+- `capabilities/` - Pluggable capability system (BaseCapability, Databricks with layered structure)
 - `templates/` - Terraform templates for infrastructure deployment
 
 **Architecture Principles**: See detailed principles below
 
-**Scope**: Single capability (Databricks) that provisions Resource Group + Workspace + Cluster as one unit
+**Scope**: Single capability (Databricks) with clean three-layer architecture:
+- `core/` - Business logic (intent parsing, decisions, config)
+- `models/` - Data structures (Pydantic schemas)
+- `provisioning/` - Infrastructure deployment (Terraform generation/execution)
 
-**Next**: Polish and demo preparation (not adding new capabilities in spike)
+**Next**: Ready for adding 2nd capability (Azure OpenAI) following established pattern
 
 ## Code Generation Guidelines
 
@@ -62,7 +65,7 @@ This is a spike/POC to build an AI agent that automates infrastructure provision
    - Orchestrator: Conversation management and capability routing
    - Tools: Specific helper functions (discovery, naming, cost estimation)
    - Capabilities: Infrastructure provisioning logic (Databricks, OpenAI, etc.)
-   - Agent modules: Legacy single-shot Databricks provisioning
+   - Each capability is self-contained with its own config, models, and implementation
 
 2. **Tool Registry Pattern**: Dynamic tool registration with decorators
    ```python
@@ -190,7 +193,7 @@ This is a spike/POC to build an AI agent that automates infrastructure provision
 ### File Organization
 ```
 agent-infra-spike/
-├── orchestrator/              # Current focus - conversational orchestrator
+├── orchestrator/              # Conversational orchestrator
 │   ├── __init__.py
 │   ├── orchestrator_agent.py  # MAF-based conversation manager
 │   ├── tool_manager.py        # Dynamic tool registration system
@@ -201,20 +204,28 @@ agent-infra-spike/
 ├── capabilities/              # Pluggable infrastructure capabilities
 │   ├── __init__.py            # Exports BaseCapability, data models
 │   ├── base.py                # BaseCapability interface, CapabilityContext/Plan/Result
-│   └── databricks/            # Databricks provisioning capability
-│       ├── __init__.py
-│       └── capability.py      # DatabricksCapability wrapping agent/ code
+│   └── databricks/            # Databricks provisioning capability (3-layer architecture)
+│       ├── __init__.py        # Exports all databricks components
+│       ├── capability.py      # DatabricksCapability main class
+│       ├── README.md          # Capability documentation
+│       │
+│       ├── core/              # Business Logic Layer
+│       │   ├── __init__.py
+│       │   ├── config.py      # Configuration (instance types, pricing, regions)
+│       │   ├── intent_parser.py   # NL parsing with Azure OpenAI (was: intent_recognizer)
+│       │   └── decision_maker.py  # Configuration decisions (was: decision_engine)
+│       │
+│       ├── models/            # Data Models Layer
+│       │   ├── __init__.py
+│       │   └── schemas.py     # Pydantic data classes (was: models.py)
+│       │
+│       └── provisioning/      # Infrastructure Layer
+│           └── terraform/
+│               ├── __init__.py
+│               ├── generator.py   # Terraform code generation
+│               └── executor.py    # Terraform execution
 │
-├── agent/                     # Legacy - Databricks provisioning logic
-│   ├── infrastructure_agent.py # Original single-shot implementation
-│   ├── intent_recognizer.py   # Used by Databricks capability
-│   ├── decision_engine.py     # Used by Databricks capability
-│   ├── terraform_generator.py # Used by Databricks capability
-│   ├── terraform_executor.py  # Used by Databricks capability
-│   ├── models.py              # InfrastructureRequest, InfrastructureDecision
-│   └── config.py              # Azure configuration
-│
-├── templates/                 # Terraform templates
+├── templates/                 # Terraform Jinja2 templates (project root)
 │   ├── main.tf.j2
 │   ├── variables.tf.j2
 │   └── ...
@@ -222,6 +233,7 @@ agent-infra-spike/
 └── tests/
     ├── test_orchestrator.py   # Phase 1 + 1.5 tests
     ├── test_capability_integration.py # Phase 2 tests
+    ├── test_decision_maker.py # Was: test_decision_engine.py
     ├── test_maf_setup.py      # Phase 0 tests
     └── ...
 ```
@@ -244,7 +256,7 @@ class InfrastructureRequest:
     # ... other fields
 ```
 
-**Current Implementation**: See `orchestrator/models.py`, `agent/models.py`
+**Current Implementation**: See `orchestrator/models.py`, `capabilities/databricks/models/schemas.py`
 
 #### 2. LLM Integration
 **Convention**: Use agent frameworks (not raw OpenAI SDK)
@@ -400,13 +412,13 @@ logger.error(f"Deployment failed: {error}")
 **See**: `capabilities/databricks/` for working example
 
 ### Integration Points (Future)
-- Orchestrator → Capability execution (Phase 2+)
 - Multi-capability workflows (Phase 3+)
 - Approval gates and state management (Phase 3+)
+- Persistent conversation state (Phase 3+)
 
 ## Example Workflows
 
-### Current: Conversational Planning
+### Current: End-to-End Databricks Provisioning
 ```
 User: "I need Databricks for ML team"
     ↓
@@ -416,25 +428,20 @@ Orchestrator: Uses tools to discover capabilities, suggest names, estimate costs
     ↓
 Orchestrator: Proposes infrastructure plan
     ↓
-[Phase 2+: Capability execution will happen here]
+Orchestrator: Calls DatabricksCapability.plan()
+    ↓
+DatabricksCapability: IntentParser → DecisionMaker → TerraformGenerator
+    ↓
+Orchestrator: Shows plan, gets approval
+    ↓
+Orchestrator: Calls DatabricksCapability.execute()
+    ↓
+DatabricksCapability: TerraformExecutor deploys to Azure
+    ↓
+Return: Working Databricks workspace with URL
 ```
 
-### Legacy: Single-Shot Databricks Provisioning
-```
-User: "Create workspace for data science team"
-    ↓
-IntentRecognizer: Parse to InfrastructureRequest
-    ↓
-DecisionEngine: Choose config (instance types, SKUs)
-    ↓
-TerraformGenerator: Generate HCL files
-    ↓
-TerraformExecutor: Deploy to Azure
-    ↓
-Return: DeploymentResult with URL
-```
-
-*Note: Legacy workflow in `agent/` directory to be refactored into capability pattern.*
+**Status**: ✅ Working end-to-end, deployed to production Azure
 
 ## Questions to Ask Before Generating
 
@@ -443,6 +450,36 @@ Return: DeploymentResult with URL
 3. What validation is needed?
 4. Should this be mocked in tests?
 5. Does this need logging?
+
+## Documentation Guidelines
+
+### Creating Status/Summary Documents
+
+**Naming Convention**: When creating documentation about current status, summaries, or snapshots, prefix with date:
+
+```
+<YYYY-MM-DD>-<descriptive-name>.md
+```
+
+**Examples**:
+- `2025-11-10-DATABRICKS_REFACTORING_SUMMARY.md`
+- `2025-11-10-SESSION_SUMMARY.md`
+- `2025-11-10-REPO_STATUS.md`
+
+**Why**:
+- Clear historical tracking
+- Easy to identify document age
+- Multiple snapshots don't overwrite each other
+- Can see evolution over time
+
+**Where to put them**:
+- `docs/` - For project-level documentation
+- `docs/implementation_status/` - For phase-specific progress
+
+**Don't prefix**:
+- Living documents (README.md, CURRENT_STATE.md, ARCHITECTURE_EVOLUTION.md)
+- Reference docs (PRD.md, API specs)
+- How-to guides (capabilities/README.md)
 
 ## References
 - PRD: `/docs/PRD.md`
@@ -470,10 +507,35 @@ This is a POC/spike, so:
 
 **Update frequency**: Review after each completed phase to keep aligned with actual implementation.
 
+## Recent Updates
+
+### November 10, 2025 - Databricks Capability Refactoring
+- 🏗️ **Three-layer architecture**: Organized databricks capability into `core/`, `models/`, `provisioning/` layers
+- 📦 **File reorganization**: Moved 6 files to layer-based structure
+- 🔄 **Class renames**: `IntentRecognizer` → `IntentParser`, `DecisionEngine` → `DecisionMaker`
+- 📝 **Documentation**: Added `capabilities/databricks/README.md`, `docs/DATABRICKS_REFACTORING_SUMMARY.md`, `docs/2025-11-10-*.md` files
+- ✅ **All 94 tests passing** - Zero functionality lost
+
+**Layer Responsibilities**:
+- `core/` - Business logic (config, intent parsing, decision making)
+- `models/` - Data structures (Pydantic schemas)
+- `provisioning/` - Infrastructure deployment (Terraform generation/execution)
+
+**Template**: This structure serves as template for future capabilities (Azure OpenAI, AKS, etc.)
+
+### November 10, 2025 (Earlier) - Legacy Code Cleanup
+- ❌ Removed `agent/infrastructure_agent.py` - Legacy single-shot wrapper (307 lines)
+- ❌ Removed `tests/test_infrastructure_agent.py` - Tests for legacy code (434 lines, 19 tests)
+- ❌ Removed `agent/` directory - Empty after cleanup
+- 📦 Moved `config.py` → `capabilities/databricks/core/config.py` - Part of refactoring
+- ✅ Result: 741 lines removed, cleaner codebase
+
+**Impact**: Codebase now has single clear pattern (orchestrator → capability flow) with scalable layered architecture.
+
 ## Success Definition
 Code is successful when:
-1. All tests pass
-2. Can deploy a workspace end-to-end
-3. Takes <20 minutes from request to working workspace
-4. Code is readable and maintainable
+1. All tests pass (currently 94/94 ✅)
+2. Can deploy a workspace end-to-end (working in production ✅)
+3. Takes <20 minutes from request to working workspace (~13 min ✅)
+4. Code is readable and maintainable (clean architecture ✅)
 5. Follows patterns in this document

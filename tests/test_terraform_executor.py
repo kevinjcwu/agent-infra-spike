@@ -31,7 +31,7 @@ class TestTerraformExecutor:
     @pytest.fixture
     def mock_subprocess_success(self):
         """Mock successful subprocess.run calls."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             # Default successful response
             mock_run.return_value = Mock(
                 returncode=0,
@@ -78,7 +78,7 @@ class TestTerraformExecutor:
         self, sample_terraform_files, tmp_path
     ):
         """Test successful deployment with auto-approve."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             # Mock successful responses for all commands
             mock_run.side_effect = [
                 # terraform init
@@ -114,7 +114,7 @@ class TestTerraformExecutor:
 
     def test_init_failure(self, sample_terraform_files, tmp_path):
         """Test handling of terraform init failure."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.return_value = Mock(
                 returncode=1,
                 stdout="",
@@ -135,7 +135,7 @@ class TestTerraformExecutor:
 
     def test_plan_failure(self, sample_terraform_files, tmp_path):
         """Test handling of terraform plan failure."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.side_effect = [
                 # terraform init succeeds
                 Mock(returncode=0, stdout="Initialized", stderr=""),
@@ -161,7 +161,7 @@ class TestTerraformExecutor:
 
     def test_apply_failure(self, sample_terraform_files, tmp_path):
         """Test handling of terraform apply failure."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.side_effect = [
                 # terraform init succeeds
                 Mock(returncode=0, stdout="Initialized", stderr=""),
@@ -189,7 +189,7 @@ class TestTerraformExecutor:
 
     def test_timeout_handling(self, sample_terraform_files, tmp_path):
         """Test handling of command timeout."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired(
                 cmd="terraform init", timeout=10
             )
@@ -229,7 +229,7 @@ class TestTerraformExecutor:
 
     def test_parse_terraform_outputs(self, tmp_path):
         """Test parsing of terraform output JSON."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.return_value = Mock(
                 returncode=0,
                 stdout=json.dumps({
@@ -249,7 +249,7 @@ class TestTerraformExecutor:
 
     def test_parse_terraform_outputs_failure(self, tmp_path):
         """Test handling of terraform output parsing failure."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.return_value = Mock(
                 returncode=1,
                 stdout="",
@@ -264,7 +264,7 @@ class TestTerraformExecutor:
 
     def test_parse_terraform_outputs_invalid_json(self, tmp_path):
         """Test handling of invalid JSON from terraform output."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.return_value = Mock(
                 returncode=0,
                 stdout="invalid json {",
@@ -295,7 +295,7 @@ class TestTerraformExecutor:
 
     def test_destroy_deployment_with_auto_approve(self, tmp_path):
         """Test successful destroy with auto-approve."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.return_value = Mock(
                 returncode=0,
                 stdout="Destroy complete!",
@@ -320,7 +320,7 @@ class TestTerraformExecutor:
 
     def test_destroy_deployment_failure(self, tmp_path):
         """Test handling of destroy failure."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.return_value = Mock(
                 returncode=1,
                 stdout="",
@@ -355,7 +355,7 @@ class TestTerraformExecutor:
 
     def test_run_terraform_command_captures_output(self, tmp_path):
         """Test that terraform command output is captured."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.return_value = Mock(
                 returncode=0,
                 stdout="Command output",
@@ -376,7 +376,7 @@ class TestTerraformExecutor:
         self, sample_terraform_files, tmp_path
     ):
         """Test handling of unexpected exceptions."""
-        with patch("capabilities.databricks.terraform_executor.subprocess.run") as mock_run:
+        with patch("capabilities.databricks.provisioning.terraform.executor.subprocess.run") as mock_run:
             mock_run.side_effect = Exception("Unexpected error")
 
             executor = TerraformExecutor()

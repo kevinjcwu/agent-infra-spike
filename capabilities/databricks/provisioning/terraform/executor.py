@@ -1,5 +1,4 @@
-"""
-Terraform executor for running Terraform commands and managing deployments.
+"""Terraform executor for running Terraform commands and managing deployments.
 
 This module executes Terraform workflows (init, plan, apply) and parses outputs
 to return structured DeploymentResult objects.
@@ -11,9 +10,8 @@ import subprocess
 import time
 from pathlib import Path
 
-from agent.config import Config
-
-from .models import DeploymentResult, TerraformFiles
+from ...core.config import Config
+from ...models.schemas import DeploymentResult, TerraformFiles
 
 logger = logging.getLogger(__name__)
 

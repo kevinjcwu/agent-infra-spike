@@ -261,7 +261,7 @@ Provisions Azure Databricks infrastructure as a complete unit.
 
 **Cost**: ~$784-3600/month depending on configuration
 
-**Implementation Note**: This capability wraps the existing `agent/` code, which does all the actual deployment work via Terraform.
+**Implementation Note**: This capability contains all deployment logic in a 3-layer architecture (core/models/provisioning). See `capabilities/databricks/README.md` for details.
 
 ---
 

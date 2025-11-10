@@ -53,7 +53,7 @@ agent-infra = "cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["agent*"]
+include = ["orchestrator*", "capabilities*"]
 exclude = ["tests*", "docs*", "generated*"]
 
 [tool.pytest.ini_options]
@@ -63,10 +63,6 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
     "--verbose",
-    "--cov=agent",
-    "--cov=orchestrator",
-    "--cov-report=term-missing",
-    "--cov-report=html",
 ]
 
 [tool.black]

@@ -1,12 +1,13 @@
 """Databricks provisioning capability.
 
-This capability wraps the existing Databricks agent implementation,
-providing a standard capability interface for the orchestrator.
+This capability provides a standard capability interface for the orchestrator,
+implementing Databricks workspace and cluster provisioning.
 """
 
 import json
 import time
 from pathlib import Path
+from typing import Any
 
 from capabilities.base import (
     BaseCapability,
@@ -15,27 +16,27 @@ from capabilities.base import (
     CapabilityResult,
 )
 
-from .decision_engine import DecisionEngine
-from .intent_recognizer import IntentRecognizer
-from .models import InfrastructureRequest
-from .terraform_executor import TerraformExecutor
-from .terraform_generator import TerraformGenerator
+from .core.decision_maker import DecisionMaker
+from .core.intent_parser import IntentParser
+from .models.schemas import InfrastructureRequest
+from .provisioning.terraform.executor import TerraformExecutor
+from .provisioning.terraform.generator import TerraformGenerator
 
 
 class DatabricksCapability(BaseCapability):
     """Provision Azure Databricks workspace with compute clusters.
 
-    This capability uses the existing Databricks agent components to:
-    1. Parse user requirements (IntentRecognizer)
-    2. Make configuration decisions (DecisionEngine)
+    This capability implements the full provisioning workflow:
+    1. Parse user requirements (IntentParser)
+    2. Make configuration decisions (DecisionMaker)
     3. Generate Terraform code (TerraformGenerator)
     4. Execute deployment (TerraformExecutor)
     """
 
     def __init__(self):
-        """Initialize Databricks capability with existing agent components."""
-        self.intent_recognizer = IntentRecognizer()
-        self.decision_engine = DecisionEngine()
+        """Initialize Databricks capability with core components."""
+        self.intent_parser = IntentParser()
+        self.decision_maker = DecisionMaker()
         self.terraform_generator = TerraformGenerator()
         self.terraform_executor = TerraformExecutor()
 
@@ -48,6 +49,27 @@ class DatabricksCapability(BaseCapability):
     def description(self) -> str:
         """Human-readable description."""
         return "Provision Azure Databricks workspace with compute infrastructure"
+
+    def get_required_parameters(self) -> list[str]:
+        """Get required parameters for Databricks provisioning.
+
+        Returns:
+            List of required parameter names
+        """
+        return ["team", "environment", "region"]
+
+    def get_optional_parameters(self) -> dict[str, Any]:
+        """Get optional parameters and their defaults for Databricks.
+
+        Returns:
+            Dict of parameter names to default values
+        """
+        return {
+            "workspace_name": None,  # Auto-generated if not provided
+            "enable_gpu": False,
+            "workload_type": "data_engineering",
+            "instance_pool_enabled": False,
+        }
 
     async def plan(self, context: CapabilityContext) -> CapabilityPlan:
         """Generate Databricks provisioning plan.
@@ -67,7 +89,7 @@ class DatabricksCapability(BaseCapability):
         # Step 1: Parse user request into infrastructure requirements
         # Use parameters from orchestrator conversation if available
         request_text = self._build_request_text(context)
-        infra_request = self.intent_recognizer.recognize_intent(request_text)
+        infra_request = self.intent_parser.recognize_intent(request_text)
 
         # Override with explicit parameters from conversation
         if "team" in context.parameters:
@@ -80,7 +102,7 @@ class DatabricksCapability(BaseCapability):
             infra_request.workspace_name = context.parameters["workspace_name"]
 
         # Step 2: Make configuration decisions
-        decision = self.decision_engine.make_decision(infra_request)
+        decision = self.decision_maker.make_decision(infra_request)
 
         # Step 3: Generate Terraform files
         terraform_files = self.terraform_generator.generate(decision)

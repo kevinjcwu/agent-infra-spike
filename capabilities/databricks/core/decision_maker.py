@@ -1,5 +1,4 @@
-"""
-Decision engine for making infrastructure configuration decisions.
+"""Decision maker for infrastructure configuration decisions.
 
 This module takes InfrastructureRequest objects and makes intelligent decisions
 about instance types, SKUs, cluster sizes, and cost estimates.
@@ -7,16 +6,14 @@ about instance types, SKUs, cluster sizes, and cost estimates.
 
 import logging
 
-from agent.config import Config
-
-from .models import InfrastructureDecision, InfrastructureRequest
+from ..models.schemas import InfrastructureDecision, InfrastructureRequest
+from .config import Config
 
 logger = logging.getLogger(__name__)
 
 
-class DecisionEngine:
-    """
-    Makes intelligent infrastructure configuration decisions.
+class DecisionMaker:
+    """Makes intelligent infrastructure configuration decisions.
 
     Takes a parsed InfrastructureRequest and generates a detailed
     InfrastructureDecision with specific instance types, costs, and
@@ -24,8 +21,7 @@ class DecisionEngine:
     """
 
     def make_decision(self, request: InfrastructureRequest) -> InfrastructureDecision:
-        """
-        Generate infrastructure configuration decisions from a request.
+        """Generate infrastructure configuration decisions from a request.
 
         Args:
             request: Parsed infrastructure request
@@ -34,7 +30,7 @@ class DecisionEngine:
             InfrastructureDecision with specific configuration details
 
         Examples:
-            >>> engine = DecisionEngine()
+            >>> engine = DecisionMaker()
             >>> request = InfrastructureRequest(
             ...     workspace_name="ml-team-prod",
             ...     team="ml",
@@ -157,8 +153,7 @@ class DecisionEngine:
         return decision
 
     def _determine_instance_size(self, request: InfrastructureRequest) -> str:
-        """
-        Determine the appropriate instance size based on workload and environment.
+        """Determine the appropriate instance size based on workload and environment.
 
         Args:
             request: Infrastructure request
@@ -172,8 +167,7 @@ class DecisionEngine:
         return "small"
 
     def _downgrade_instance_size(self, current_size: str) -> str:
-        """
-        Downgrade instance size to reduce costs.
+        """Downgrade instance size to reduce costs.
 
         Args:
             current_size: Current instance size
@@ -195,8 +189,7 @@ class DecisionEngine:
         databricks_sku: str,
         estimated_monthly_cost: float,
     ) -> str:
-        """
-        Generate a human-readable justification for the decisions made.
+        """Generate a human-readable justification for the decisions made.
 
         Args:
             request: Infrastructure request

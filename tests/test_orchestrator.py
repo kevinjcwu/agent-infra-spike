@@ -24,27 +24,31 @@ from orchestrator.tools import (
 def test_tools_capability_selection():
     """Test capability selection tool validates against registry."""
     # Valid capability selection
-    result = json.loads(select_capabilities(
-        capabilities=["provision_databricks"],
-        rationale="ML training requires compute platform"
-    ))
+    result = json.loads(
+        select_capabilities(
+            capabilities=["provision_databricks"], rationale="ML training requires compute platform"
+        )
+    )
     assert result["status"] == "success"
     assert result["count"] == 1
     assert result["capabilities"][0]["name"] == "provision_databricks"
 
     # Test single valid capability (spike only has Databricks)
-    result = json.loads(select_capabilities(
-        capabilities=["provision_databricks"],
-        rationale="Need compute for data engineering"
-    ))
+    result = json.loads(
+        select_capabilities(
+            capabilities=["provision_databricks"], rationale="Need compute for data engineering"
+        )
+    )
     assert result["status"] == "success"
     assert result["count"] == 1
 
     # Invalid capability (hallucination prevention)
-    result = json.loads(select_capabilities(
-        capabilities=["provision_azure_ml"],  # Not in registry!
-        rationale="Want ML platform"
-    ))
+    result = json.loads(
+        select_capabilities(
+            capabilities=["provision_azure_ml"],  # Not in registry!
+            rationale="Want ML platform",
+        )
+    )
     assert result["status"] == "error"
     assert "provision_azure_ml" in result["errors"][0]
     assert "valid_capabilities" in result
@@ -65,8 +69,7 @@ def test_tools_cost_estimation():
     result = json.loads(
         estimate_cost(
             capability="provision_databricks",
-            enable_gpu=False,
-            workload_type="data_engineering"
+            parameters={"enable_gpu": False, "workload_type": "data_engineering"},
         )
     )
 
@@ -78,8 +81,7 @@ def test_tools_cost_estimation():
     result_gpu = json.loads(
         estimate_cost(
             capability="provision_databricks",
-            enable_gpu=True,
-            workload_type="ml"
+            parameters={"enable_gpu": True, "workload_type": "ml"},
         )
     )
 
@@ -206,7 +208,11 @@ async def run_manual_test():
         print(f"Turn {i}: {description}")
         print(f"User: {message}")
         response = await orchestrator.process_message(message)
-        print(f"Orchestrator: {response[:200]}..." if len(response) > 200 else f"Orchestrator: {response}")
+        print(
+            f"Orchestrator: {response[:200]}..."
+            if len(response) > 200
+            else f"Orchestrator: {response}"
+        )
         print("-" * 70 + "\n")
 
     print(f"Total messages: {orchestrator.state.messages_count}")

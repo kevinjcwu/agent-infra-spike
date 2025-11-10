@@ -1,7 +1,7 @@
 # Current State of agent-infra-spike
 
-**Date**: November 7, 2025
-**Status**: ✅ **SPIKE COMPLETE & DEPLOYED TO AZURE**
+**Date**: November 10, 2025
+**Status**: ✅ **SPIKE COMPLETE, REFACTORED & DEPLOYED TO AZURE**
 
 ---
 
@@ -56,10 +56,11 @@ Result: Working Databricks workspace ✅
 - Deployment Time: ~13 minutes
 
 **Test Coverage**:
-- 23 tests, all passing ✅
+- 94 tests, all passing ✅
 - Phase 0: MAF integration (6 tests)
 - Phase 1: Orchestrator + tools (9 tests)
 - Phase 2: Capability integration (8 tests)
+- Databricks modules: 71 tests (decision engine, terraform, etc.)
 
 ### 🎯 Current Scope
 
@@ -81,14 +82,32 @@ User (cli_maf.py)
 Orchestrator (MAF agent, multi-turn conversation)
     ↓ uses tools
     ↓ routes to
-Capability (DatabricksCapability - plan/execute interface)
-    ↓ wraps
-Agent Modules (IntentRecognizer, DecisionEngine, TerraformGenerator, TerraformExecutor)
+DatabricksCapability (plan/execute interface)
+    ↓ uses layered architecture
+    ├── Core: IntentParser, DecisionMaker, Config
+    ├── Models: InfrastructureRequest, InfrastructureDecision
+    └── Provisioning: TerraformGenerator, TerraformExecutor
     ↓ deploys to
 Azure (Resource Group + Databricks Workspace + Cluster)
 ```
 
-**Key Insight**: `agent/` is ACTIVE deployment code, `capabilities/` is the standard interface wrapper. They work together.
+**Key Insight**: All Databricks-specific code lives in `capabilities/databricks/` organized in three layers (core/models/provisioning). The orchestrator routes requests to capabilities based on user intent.
+
+**Databricks Structure** (refactored Nov 10, 2025):
+```
+capabilities/databricks/
+├── capability.py              # Main orchestrator (BaseCapability interface)
+├── core/                      # Business logic layer
+│   ├── config.py              # Configuration & pricing
+│   ├── intent_parser.py       # NL → structured data
+│   └── decision_maker.py      # Configuration decisions
+├── models/                    # Data structures layer
+│   └── schemas.py             # Pydantic models
+└── provisioning/              # Infrastructure layer
+    └── terraform/
+        ├── generator.py       # HCL generation
+        └── executor.py        # Terraform execution
+```
 
 ---
 
@@ -115,11 +134,34 @@ Azure (Resource Group + Databricks Workspace + Cluster)
 
 ---
 
-## Recent Changes (November 7, 2025)
+## Recent Changes
 
-### Files Removed
-1. `cli.py` - Legacy single-shot CLI (replaced by `cli_maf.py`)
-2. 7 redundant documentation files (merged or outdated)
+### November 10, 2025 - Databricks Capability Refactoring
+**Major Architecture Improvement**: Refactored databricks capability from flat structure to three-layer architecture
+
+**Changes**:
+- 🏗️ **Three-layer architecture**: Organized into core/ (business logic), models/ (data), provisioning/ (IaC)
+- 📦 **File reorganization**: Moved 6 files to layer-based structure
+- 🔄 **Class renames**: `IntentRecognizer` → `IntentParser`, `DecisionEngine` → `DecisionMaker`
+- ✅ **All 94 tests passing** - Zero functionality lost
+- 📝 **Documentation**: Added `capabilities/databricks/README.md` and `docs/DATABRICKS_REFACTORING_SUMMARY.md`
+
+**Why**: Establishes clear, scalable pattern for future capabilities. Each layer has single responsibility.
+
+**See**: `docs/DATABRICKS_REFACTORING_SUMMARY.md` for complete details
+
+### November 10, 2025 (Earlier) - Legacy Code Cleanup
+- ❌ Removed `agent/infrastructure_agent.py` (307 lines) - Legacy wrapper
+- ❌ Removed `tests/test_infrastructure_agent.py` (434 lines) - Legacy tests
+- ❌ Removed empty `agent/` directory - No longer needed
+- 📦 Moved `config.py` → `capabilities/databricks/core/config.py` (part of refactoring)
+- ✅ Total cleanup: 741 lines removed
+
+### November 7, 2025 - Spike Completion
+- ❌ Removed `cli.py` - Legacy single-shot CLI (replaced by `cli_maf.py`)
+- ❌ Removed 7 redundant documentation files (merged or outdated)
+- ✅ Completed capability-agnostic refactoring
+- 📝 Updated all documentation to reflect current architecture
 
 ### Documentation Updated
 - `README.md` - Complete rewrite with current state

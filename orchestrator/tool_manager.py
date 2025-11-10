@@ -22,18 +22,20 @@ from typing import Any, get_args, get_origin
 
 class ToolManager:
     """
-    Manages dynamic tool registration and execution.
+    Manages tool registration and provides schemas for MAF agents.
 
-    Tools register themselves via decorators, schemas are auto-generated
-    from Python type hints, and execution is handled dynamically without
-    hardcoded dispatch logic.
+    Supports two registration methods:
+    1. Decorator: @tool_manager.register("description")
+    2. Method: tool_manager.register_tool(func, "description")
+
+    Auto-generates OpenAI-compatible function schemas from type hints.
     """
 
     def __init__(self):
-        """Initialize empty tool registry."""
-        self.tools: dict[str, Callable] = {}
-        self.tool_schemas: list[dict[str, Any]] = []
-        self.tool_descriptions: dict[str, str] = {}
+        self.tools: dict[str, Callable] = {}  # name -> function
+        self.tool_schemas: list[dict[str, Any]] = []  # OpenAI function schemas
+        self.descriptions: dict[str, str] = {}  # name -> description
+        self.orchestrator: Any = None  # Will be set by orchestrator on init
 
     def register(self, description: str) -> Callable:
         """
@@ -54,7 +56,7 @@ class ToolManager:
         def decorator(func: Callable) -> Callable:
             tool_name = func.__name__
             self.tools[tool_name] = func
-            self.tool_descriptions[tool_name] = description
+            self.descriptions[tool_name] = description
 
             # Generate OpenAI function schema from Python signature
             schema = self._generate_schema(func, description)
@@ -229,7 +231,7 @@ class ToolManager:
 
         return {
             "name": tool_name,
-            "description": self.tool_descriptions.get(tool_name, ""),
+            "description": self.descriptions.get(tool_name, ""),
             "function": self.tools[tool_name],
             "schema": next(
                 (s for s in self.tool_schemas if s["name"] == tool_name), None

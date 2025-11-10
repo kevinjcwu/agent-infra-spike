@@ -36,14 +36,18 @@ class InfrastructureOrchestrator:
 
     def __init__(self):
         """Initialize the orchestrator with MAF agent."""
-        self.agent = self._create_agent()
         self.state = ConversationState()
         self.current_plan: ProvisioningPlan | None = None
         self.capabilities: dict[str, BaseCapability] = {}
         self._register_capabilities()
+
+        # Register orchestrator with tool_manager so tools can call back
+        tool_manager.orchestrator = self
+
+        # Create MAF agent after tools are configured
+        self.agent = self._create_agent()
+
         # Create a persistent thread for conversation history
-        # According to MAF docs: call get_new_thread() to create persistent thread
-        # If we don't create thread explicitly, each run gets a "throwaway thread"
         self.thread = self.agent.get_new_thread()
 
     def _register_capabilities(self):
@@ -84,10 +88,6 @@ class InfrastructureOrchestrator:
         # Get actual tool functions (not schemas) - MAF handles tool calling automatically
         tool_functions = tool_manager.get_tool_functions()
 
-        print(f"[DEBUG] Registering {len(tool_functions)} tools with MAF:")
-        for func in tool_functions:
-            print(f"  - {func.__name__}")
-
         return client.create_agent(
             name="InfrastructureOrchestrator",
             instructions=self._get_system_prompt(),
@@ -100,7 +100,7 @@ class InfrastructureOrchestrator:
         # Get available capabilities from registry
         capabilities_desc = capability_registry.get_capabilities_description()
 
-        return f"""You are an expert infrastructure provisioning orchestrator for Azure and Databricks.
+        return f"""You are an expert infrastructure provisioning orchestrator for Azure cloud services.
 
 **Your Role**:
 Help users provision cloud infrastructure through natural conversation. Guide them step-by-step,
@@ -118,25 +118,22 @@ When you understand what infrastructure the user needs, call the `select_capabil
 You MUST use exact capability names. The tool will validate and reject unknown capabilities.
 
 **Your Process** (FOLLOW THIS ORDER):
-1. **Understand Intent**: Listen to what the user needs (e.g., "I need Databricks")
+1. **Understand Intent**: Listen to what the user needs (e.g., "I need a data platform")
 2. **IMMEDIATELY call select_capabilities**: As soon as you know what they want,
    call `select_capabilities` with exact capability names. Do this FIRST, before asking questions.
 3. **Track what you already know**: Remember ALL information the user has provided:
    - Initial request (what capability they need)
-   - Team name
-   - Environment (dev/staging/prod)
-   - Region
-   - Workload type (data_engineering, ml, analytics)
-   - GPU requirements (yes/no)
+   - Common parameters (team name, environment, region)
+   - Capability-specific parameters (varies by capability)
 4. **Ask for missing info only**: Only ask for information you DON'T already have.
    If user provides multiple details at once, extract and remember ALL of them.
 5. **Once you have all required info**:
    - Call `suggest_naming` to generate resource names
-   - Call `estimate_cost` to calculate monthly costs
+   - Call `estimate_cost` with the capability and parameters to calculate monthly costs
    - Present complete plan with all details
 6. **Get Approval**: Ask user to confirm the plan
 7. **When user approves** (says "yes", "go ahead", "proceed", "deploy", etc.):
-   - IMMEDIATELY call `execute_deployment` tool with all parameters
+   - IMMEDIATELY call `execute_deployment` tool with capability_name and ALL parameters as a dict
    - DO NOT just say you'll deploy - ACTUALLY CALL THE TOOL
 
 CRITICAL:
@@ -145,6 +142,7 @@ CRITICAL:
 - If user provides multiple details in one message, extract ALL of them
 - Don't ask for info they already gave you
 - When user approves deployment, you MUST call execute_deployment - do not just acknowledge
+- Pass ALL gathered parameters to execute_deployment as a parameters dict
 
 **Communication Style**:
 - Conversational and helpful (not robotic)
@@ -153,56 +151,53 @@ CRITICAL:
 - Explain trade-offs when relevant
 - Be proactive with defaults but allow overrides
 
-**Example Flow**:
-User: "I need Databricks for ML experimentation"
-You think: User needs Databricks for ML
-You call: select_capabilities(capabilities=["provision_databricks"], rationale="User needs ML workspace")
-You say: "Great! I'll help set up Databricks for ML. I need a few details:
+**Example Flow for ANY Capability**:
+User: "I need [some infrastructure]"
+You think: User needs [capability]
+You call: select_capabilities(capabilities=["provision_<capability>"], rationale="...")
+You say: "Great! I'll help set up [infrastructure]. I need a few details:
 - Team name?
 - Environment (dev/staging/prod)?
 - Azure region?
-- GPU support needed?"
+- [Capability-specific questions]?"
 
-User: "team: e2e-test, env: dev, region: eastus, GPU: no"
-You think: User provided team=e2e-test, environment=dev, region=eastus, GPU=no. I have everything!
-You call: suggest_naming(team="e2e-test", environment="dev", resource_type="workspace")
-You call: estimate_cost(capability="provision_databricks", configuration={...})
+User: "team: myteam, env: dev, region: eastus, [other params]"
+You think: User provided all parameters. I have everything!
+You call: suggest_naming(team="myteam", environment="dev", resource_type="...")
+You call: estimate_cost(capability="provision_<capability>", parameters={{"param1": "value1", ...}})
 You say: "Perfect! Here's the plan:
-- Resource Group: rg-e2e-test-dev
-- Workspace: e2e-test-dev
-- Estimated cost: $200/month
+- [Resource details]
+- Estimated cost: $XXX/month
 Shall I proceed?"
 
 User: "yes, go ahead"
-You think: User approved! Must call execute_deployment now.
-You call: execute_deployment(capability_name="provision_databricks", user_request="...", parameters={...})
+You think: User approved! Must call execute_deployment now with ALL parameters as dict.
+You call: execute_deployment(
+    capability_name="provision_<capability>",
+    parameters={{"team": "myteam", "environment": "dev", "region": "eastus", "param1": "value1", ...}}
+)
 You say: [Agent will see deployment results and share them with user]
 
 **Tools Available**:
 - `select_capabilities`: Declare which capabilities are needed (MUST use exact names)
 - `suggest_naming`: Generate Azure-compliant naming suggestions
-- `estimate_cost`: Calculate monthly cost estimates
-- `execute_deployment`: Deploy infrastructure after user approves plan
+- `estimate_cost`: Calculate monthly cost estimates (pass capability and parameters dict)
+- `execute_deployment`: Deploy infrastructure after user approves plan (pass capability_name and parameters dict)
 
 **Important**:
 - Always use exact capability names from the list when calling select_capabilities
 - Suggest smart defaults (don't make users think from scratch)
-- Explain WHY you suggest something (e.g., "East US recommended for ML due to GPU availability")
+- Explain WHY you suggest something
 - Get explicit approval before calling execute_deployment
-- After user approves, call execute_deployment with: capability_name, user_request, and all gathered parameters
+- After user approves, call execute_deployment with: capability_name and parameters (as a dict with ALL gathered params)
 """
 
     async def process_message(self, user_message: str) -> str:
         """
         Process a user message and return orchestrator response.
 
-        The MAF agent handles conversation history automatically,
-        so we just pass messages and extract responses.
-
-        MAF tool calling pattern:
-        1. agent.run() returns response (may include tool_calls)
-        2. We execute tools and send results back
-        3. agent.run() again with tool results to get final response
+        MAF handles conversation history and tool execution automatically.
+        We simply pass the message and thread, then extract the response.
 
         Args:
             user_message: User's message
@@ -213,72 +208,11 @@ You say: [Agent will see deployment results and share them with user]
         # Update state
         self.state.messages_count += 1
 
-        # Process with MAF agent - pass thread to maintain conversation history
-        # MAF automatically handles tool calling when we pass function tools
+        # Process with MAF agent - MAF handles tool calling and thread updates automatically
         response = await self.agent.run(user_message, thread=self.thread)
 
-        # Update thread from response (MAF updates it with conversation history)
-        if hasattr(response, 'thread') and response.thread:
-            self.thread = response.thread
-
-        # Check if execute_deployment tool was called
-        # If so, actually execute the deployment
-        deployment_triggered = False
-        if hasattr(response, 'messages') and response.messages:
-            for msg in response.messages:
-                # Check for function call messages
-                if hasattr(msg, 'contents'):
-                    for content in msg.contents:
-                        # Look for FunctionCallContent with name 'execute_deployment'
-                        if hasattr(content, 'name') and content.name == 'execute_deployment':
-                            # Extract parameters from the function call
-                            if hasattr(content, 'arguments'):
-                                import json
-                                args = json.loads(content.arguments) if isinstance(content.arguments, str) else content.arguments
-
-                                print(f"\n🚀 [DEPLOYMENT TRIGGERED] Executing {args.get('capability_name')}...")
-                                print(f"[DEBUG] Function call args: {args}")
-
-                                try:
-                                    # Extract parameters from tool call
-                                    parameters = {
-                                        'team': args.get('team'),
-                                        'environment': args.get('environment'),
-                                        'region': args.get('region'),
-                                        'workspace_name': args.get('workspace_name'),
-                                        'enable_gpu': args.get('enable_gpu', False),
-                                        'workload_type': args.get('workload_type', 'ml'),
-                                    }
-
-                                    print(f"[DEBUG] Deployment parameters: {parameters}")
-
-                                    # Actually execute the capability
-                                    plan, result = await self.execute_capability(
-                                        capability_name=args.get('capability_name', 'provision_databricks'),
-                                        user_request='Deploy infrastructure',
-                                        parameters=parameters
-                                    )
-
-                                    # Update state
-                                    self.state.plan_approved = True
-                                    self.state.deployment_complete = True
-                                    deployment_triggered = True
-
-                                    print(f"\n✅ [DEPLOYMENT COMPLETE] {result.message}")
-
-                                except Exception as e:
-                                    print(f"\n❌ [DEPLOYMENT FAILED] {e}")
-                                    import traceback
-                                    traceback.print_exc()
-
         # Extract text response
-        response_text = response.text if hasattr(response, 'text') else str(response)
-
-        # If deployment was triggered, append a note about checking the output above
-        if deployment_triggered:
-            response_text += "\n\n(See deployment results above)"
-
-        return response_text
+        return response.text
 
     async def start_conversation(self, initial_message: str | None = None) -> str:
         """
@@ -359,15 +293,12 @@ You say: [Agent will see deployment results and share them with user]
         # Store plan in state (convert capability plan to orchestrator plan)
         self.current_plan = ProvisioningPlan(
             capability=capability_name,
-            workspace_name=parameters.get("workspace_name", ""),
-            resource_group=parameters.get("resource_group", ""),
             region=parameters.get("region", "eastus"),
             team=parameters.get("team", ""),
             environment=parameters.get("environment", "dev"),
-            enable_gpu=parameters.get("enable_gpu", False),
-            workload_type=parameters.get("workload_type", "data_engineering"),
             estimated_cost=plan.estimated_cost or 0.0,
             requires_approval=plan.requires_approval,
+            parameters=parameters,  # Store all capability-specific parameters
         )
         self.state.plan_proposed = True
 

@@ -1,5 +1,4 @@
-"""
-Terraform HCL file generator.
+"""Terraform HCL file generator.
 
 This module generates Terraform configuration files from InfrastructureDecision
 objects using Jinja2 templates.
@@ -10,7 +9,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
-from .models import InfrastructureDecision, TerraformFiles
+from ...models.schemas import InfrastructureDecision, TerraformFiles
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +32,8 @@ class TerraformGenerator:
         """
         if templates_dir is None:
             # Default to templates/ directory in project root
-            # Since we're in capabilities/databricks/, go up 2 levels to project root
-            project_root = Path(__file__).parent.parent.parent
+            # Since we're in capabilities/databricks/provisioning/terraform/, go up 5 levels to project root
+            project_root = Path(__file__).parent.parent.parent.parent.parent
             templates_dir = project_root / "templates"
         else:
             templates_dir = Path(templates_dir)

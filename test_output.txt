@@ -1,0 +1,5 @@
+ERROR: usage: pytest [options] [file_or_dir] [file_or_dir] [...]
+pytest: error: unrecognized arguments: --cov=orchestrator --cov=capabilities --cov-report=term-missing --cov-report=html
+  inifile: /workspaces/agent-infra-spike/pyproject.toml
+  rootdir: /workspaces/agent-infra-spike
+

@@ -1,7 +1,9 @@
 # Spike Completion Summary
 
-**Date**: November 7, 2025
+**Date**: November 7, 2025 (Updated November 10, 2025)
 **Status**: ✅ COMPLETE - Successfully deployed to Azure
+
+> **📝 UPDATE (November 10, 2025)**: Since this summary was written, the `agent/` directory was removed and the databricks capability was refactored into a 3-layer architecture (core/models/provisioning). See `docs/DATABRICKS_REFACTORING_SUMMARY.md` for details. References to `agent/` below are historical context.
 
 ---
 
@@ -173,14 +175,19 @@ for msg in response.messages:
 
 **Why**: execute() reconstructs TerraformFiles from plan.details["terraform_files"]
 
-### 5. agent/ is ACTIVE, Not Deprecated
+### 5. agent/ Was Active (Now Refactored)
 
-**Reality**:
+**Historical Reality (Nov 7)**:
 - `agent/` = Actual deployment code (IntentRecognizer, DecisionEngine, TerraformGenerator, TerraformExecutor)
 - `capabilities/` = Standard interface wrapper for orchestrator
-- They work **together**, not replacement
+- They worked **together**, not replacement
 
-**Data Flow**: Orchestrator → Capability (wrapper) → Agent (deployment) → Azure
+**Current Reality (Nov 10)**:
+- `agent/` directory **removed** - code moved into `capabilities/databricks/`
+- New structure: `core/` (business logic), `models/` (data), `provisioning/` (infrastructure)
+- Classes renamed: `IntentRecognizer` → `IntentParser`, `DecisionEngine` → `DecisionMaker`
+
+**Data Flow**: Orchestrator → DatabricksCapability (3-layer architecture) → Azure
 
 ---
 
