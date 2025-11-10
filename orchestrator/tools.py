@@ -166,9 +166,9 @@ def suggest_naming(
 
 
 @tool_manager.register("Estimate monthly infrastructure costs for capabilities")
-def estimate_cost(
-    capability: Annotated[str, Field(description="Capability name (e.g., 'provision_databricks')")],
-    parameters: Annotated[dict[str, Any], Field(description="Capability-specific configuration parameters")]
+async def estimate_cost(
+    capability: str,
+    parameters: dict[str, Any] | None = None
 ) -> str:
     """Estimate monthly infrastructure costs.
 
@@ -183,32 +183,53 @@ def estimate_cost(
     Returns:
         JSON string with cost breakdown
     """
-    # TODO: Refactor to use capability.estimate_cost(parameters) method
-    # For now, using a simplified lookup to avoid hardcoded if/elif chains
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"estimate_cost called with capability={capability}, parameters={parameters}")
+    logger.info(f"Types: capability={type(capability)}, parameters={type(parameters)}")
 
-    cost_estimators = _get_cost_estimators()
+    # Handle None parameters
+    if parameters is None:
+        parameters = {}
 
-    if capability in cost_estimators:
-        costs = cost_estimators[capability](parameters)
-    else:
-        # Default/unknown capability
-        costs = {
+    try:
+        # TODO: Refactor to use capability.estimate_cost(parameters) method
+        # For now, using a simplified lookup to avoid hardcoded if/elif chains
+
+        cost_estimators = _get_cost_estimators()
+
+        if capability in cost_estimators:
+            costs = cost_estimators[capability](parameters)
+        else:
+            # Default/unknown capability
+            costs = {
+                "capability": capability,
+                "monthly_estimate": 0.0,
+                "breakdown": [],
+                "currency": "USD",
+                "confidence": "unknown",
+                "notes": [f"No cost estimator configured for '{capability}'"]
+            }
+
+        costs["confidence"] = costs.get("confidence", "medium")
+        costs["notes"] = costs.get("notes", [
+            "Estimates based on typical usage patterns",
+            "Actual costs may vary based on usage",
+            "Does not include egress/ingress bandwidth",
+        ])
+
+        return json.dumps(costs)
+
+    except Exception as e:
+        # Return error in JSON format so LLM can explain it to user
+        import traceback
+        return json.dumps({
+            "status": "error",
             "capability": capability,
-            "monthly_estimate": 0.0,
-            "breakdown": [],
-            "currency": "USD",
-            "confidence": "unknown",
-            "notes": [f"No cost estimator configured for '{capability}'"]
-        }
-
-    costs["confidence"] = costs.get("confidence", "medium")
-    costs["notes"] = costs.get("notes", [
-        "Estimates based on typical usage patterns",
-        "Actual costs may vary based on usage",
-        "Does not include egress/ingress bandwidth",
-    ])
-
-    return json.dumps(costs)
+            "message": f"Cost estimation failed: {str(e)}",
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()
+        })
 
 
 def _get_cost_estimators() -> dict[str, Any]:

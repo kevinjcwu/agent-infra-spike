@@ -24,7 +24,7 @@ This is a spike/POC to build an AI agent that automates infrastructure provision
 **Current Architecture**:
 - `orchestrator/` - MAF-based conversational orchestrator (multi-turn, tool-enabled)
 - `capabilities/` - Pluggable capability system (BaseCapability, Databricks with layered structure)
-- `templates/` - Terraform templates for infrastructure deployment
+- `capabilities/databricks/templates/` - Terraform templates for Databricks provisioning
 
 **Architecture Principles**: See detailed principles below
 
@@ -219,16 +219,16 @@ agent-infra-spike/
 │       │   ├── __init__.py
 │       │   └── schemas.py     # Pydantic data classes (was: models.py)
 │       │
-│       └── provisioning/      # Infrastructure Layer
-│           └── terraform/
-│               ├── __init__.py
-│               ├── generator.py   # Terraform code generation
-│               └── executor.py    # Terraform execution
-│
-├── templates/                 # Terraform Jinja2 templates (project root)
-│   ├── main.tf.j2
-│   ├── variables.tf.j2
-│   └── ...
+      ├── provisioning/      # Infrastructure Layer
+       │   └── terraform/
+       │       ├── __init__.py
+       │       ├── generator.py   # Terraform code generation
+       │       └── executor.py    # Terraform execution
+       │
+       └── templates/         # Terraform Jinja2 templates (Databricks-specific)
+           ├── main.tf.j2
+           ├── variables.tf.j2
+           └── ...
 │
 └── tests/
     ├── test_orchestrator.py   # Phase 1 + 1.5 tests
@@ -299,7 +299,7 @@ def my_tool(param: str) -> str:
 from jinja2 import Template
 
 def generate_main_tf(decision: InfrastructureDecision) -> str:
-    template = Template(Path("templates/main.tf.j2").read_text())
+    template = Template(Path("capabilities/databricks/templates/main.tf.j2").read_text())
     return template.render(
         workspace_name=decision.workspace_name,
         instance_types=decision.instance_types,

@@ -87,19 +87,7 @@ class DatabricksCapability(BaseCapability):
             CapabilityPlan with resources, costs, and terraform details
         """
         # Step 1: Parse user request into infrastructure requirements
-        # Use parameters from orchestrator conversation if available
-        request_text = self._build_request_text(context)
-        infra_request = self.intent_parser.recognize_intent(request_text)
-
-        # Override with explicit parameters from conversation
-        if "team" in context.parameters:
-            infra_request.team = context.parameters["team"]
-        if "environment" in context.parameters:
-            infra_request.environment = context.parameters["environment"]
-        if "region" in context.parameters:
-            infra_request.region = context.parameters["region"]
-        if "workspace_name" in context.parameters:
-            infra_request.workspace_name = context.parameters["workspace_name"]
+        infra_request = self._build_infrastructure_request(context)
 
         # Step 2: Make configuration decisions
         decision = self.decision_maker.make_decision(infra_request)
@@ -251,6 +239,54 @@ class DatabricksCapability(BaseCapability):
 
         return len(errors) == 0, errors
 
+    def _build_infrastructure_request(self, context: CapabilityContext) -> InfrastructureRequest:
+        """Build InfrastructureRequest from context parameters.
+
+        If all required parameters are present in context, constructs the request
+        directly (skipping LLM call). Otherwise, uses IntentParser to extract
+        requirements from natural language.
+
+        Args:
+            context: Context with user request and parameters from conversation
+
+        Returns:
+            InfrastructureRequest with requirements
+        """
+        required_params = self.get_required_parameters()
+        has_all_required = all(param in context.parameters for param in required_params)
+
+        if has_all_required:
+            # All required params present - build directly (no LLM call)
+            team = context.parameters["team"]
+            environment = context.parameters["environment"]
+
+            # Auto-generate workspace name if not provided (matches IntentParser logic)
+            workspace_name = context.parameters.get("workspace_name")
+            if not workspace_name:
+                workspace_name = f"{team}-{environment}"
+
+            infra_request = InfrastructureRequest(
+                team=team,
+                environment=environment,
+                region=context.parameters["region"],
+                workspace_name=workspace_name,
+                enable_gpu=context.parameters.get("enable_gpu", False),
+                workload_type=context.parameters.get("workload_type", "data_engineering"),
+                cost_limit=context.parameters.get("cost_limit"),
+                additional_requirements=context.parameters.get("additional_requirements"),
+            )
+        else:
+            # Missing some params - use LLM to parse natural language
+            request_text = self._build_request_text(context)
+            infra_request = self.intent_parser.recognize_intent(request_text)
+
+            # Override with any explicit parameters we do have
+            for param in required_params + ["workspace_name"]:
+                if param in context.parameters:
+                    setattr(infra_request, param, context.parameters[param])
+
+        return infra_request
+
     def _build_request_text(self, context: CapabilityContext) -> str:
         """Build request text from context for intent recognizer.
 
@@ -258,12 +294,10 @@ class DatabricksCapability(BaseCapability):
         """
         parts = [context.user_request]
 
-        if "team" in context.parameters:
-            parts.append(f"Team: {context.parameters['team']}")
-        if "environment" in context.parameters:
-            parts.append(f"Environment: {context.parameters['environment']}")
-        if "region" in context.parameters:
-            parts.append(f"Region: {context.parameters['region']}")
+        # Include any required parameters that are present
+        for param in self.get_required_parameters():
+            if param in context.parameters:
+                parts.append(f"{param.capitalize()}: {context.parameters[param]}")
 
         return " | ".join(parts)
 

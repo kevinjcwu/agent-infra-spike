@@ -40,19 +40,19 @@ agent-infra-spike/
 │       │   ├── __init__.py
 │       │   └── schemas.py              # Pydantic models (Request, Decision, Result)
 │       │
-│       └── 📂 provisioning/            # 🟡 Infrastructure Layer
-│           ├── __init__.py
-│           └── 📂 terraform/
-│               ├── __init__.py
-│               ├── generator.py        # Terraform HCL generation (Jinja2)
-│               └── executor.py         # Terraform execution (subprocess)
-│
-├── 📂 templates/                       # Terraform Jinja2 templates
-│   ├── main.tf.j2                      # Resource definitions
-│   ├── variables.tf.j2                 # Variable declarations
-│   ├── outputs.tf.j2                   # Output definitions
-│   ├── provider.tf.j2                  # Provider config
-│   └── terraform.tfvars.j2             # Variable values
+        ├── 📂 provisioning/            # 🟡 Infrastructure Layer
+        │   ├── __init__.py
+        │   └── 📂 terraform/
+        │       ├── __init__.py
+        │       ├── generator.py        # Terraform HCL generation (Jinja2)
+        │       └── executor.py         # Terraform execution (subprocess)
+        │
+        └── 📂 templates/                # Terraform Jinja2 templates (Databricks-specific)
+            ├── main.tf.j2               # Resource definitions
+            ├── variables.tf.j2          # Variable declarations
+            ├── outputs.tf.j2            # Output definitions
+            ├── provider.tf.j2           # Provider config
+            └── terraform.tfvars.j2      # Variable values
 │
 ├── 📂 tests/                           # Test suite (94 tests)
 │   ├── test_maf_setup.py               # MAF integration tests
@@ -133,7 +133,7 @@ agent-infra-spike/
 
 **Files**:
 - **`generator.py`** - Terraform HCL generation
-  - Renders Jinja2 templates from `templates/*.tf.j2`
+  - Renders Jinja2 templates from `capabilities/databricks/templates/*.tf.j2`
   - Produces 5 files: main.tf, variables.tf, outputs.tf, provider.tf, terraform.tfvars
 
 - **`executor.py`** - Terraform execution

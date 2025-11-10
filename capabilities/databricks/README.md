@@ -71,7 +71,7 @@ capabilities/databricks/
 
 - **generator.py**: Generate Terraform HCL from decisions
   - Renders Jinja2 templates (main.tf, variables.tf, outputs.tf, etc.)
-  - Template path: `templates/*.tf.j2` (project root)
+  - Template path: `capabilities/databricks/templates/*.tf.j2`
 
 - **executor.py**: Execute Terraform commands
   - Runs: `terraform init`, `plan`, `apply`, `destroy`
@@ -291,7 +291,7 @@ Override `_select_instance_types()` or `_select_databricks_sku()` methods.
 
 **File**: `provisioning/terraform/generator.py`
 
-Modify Jinja2 templates in `templates/*.tf.j2` (project root).
+Modify Jinja2 templates in `capabilities/databricks/templates/*.tf.j2`.
 
 ## Error Handling
 
@@ -361,7 +361,7 @@ capabilities/<name>/
 
 - **Base Interface**: `capabilities/base.py` - `BaseCapability` class
 - **Orchestrator**: `orchestrator/orchestrator_agent.py` - MAF integration
-- **Templates**: `templates/*.tf.j2` - Terraform HCL templates
+- **Templates**: `capabilities/databricks/templates/*.tf.j2` - Terraform HCL templates
 - **Tests**: `tests/test_capability_integration.py` - End-to-end tests
 - **Documentation**: `docs/DATABRICKS_REFACTORING_SUMMARY.md` - Architecture evolution
 

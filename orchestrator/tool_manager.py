@@ -97,6 +97,14 @@ class ToolManager:
                 # No type hint - default to string
                 json_type = "string"
             else:
+                # Unwrap Annotated types to get the actual type
+                # e.g., Annotated[dict[str, Any], Field(...)] -> dict[str, Any]
+                origin = get_origin(param_type)
+                if origin is not None and hasattr(origin, '__name__') and origin.__name__ == 'Annotated':
+                    # Get the first argument (the actual type)
+                    args = get_args(param_type)
+                    param_type = args[0] if args else param_type
+
                 json_type = self._python_type_to_json_type(param_type)
 
             parameters["properties"][param_name] = {"type": json_type}
@@ -121,17 +129,26 @@ class ToolManager:
         Returns:
             JSON Schema type string
         """
-        # Handle Optional types (Union[X, None])
+        # Handle generic types (e.g., dict[str, Any], list[str])
         origin = get_origin(python_type)
         if origin is not None:
             args = get_args(python_type)
+
             # For Optional[X], use X's type
             if len(args) == 2 and type(None) in args:
                 # Get the non-None type
                 non_none_type = args[0] if args[1] is type(None) else args[1]
                 return self._python_type_to_json_type(non_none_type)
 
-        # Direct type mappings
+            # For dict[K, V] -> "object"
+            if origin is dict:
+                return "object"
+
+            # For list[T] -> "array"
+            if origin is list:
+                return "array"
+
+        # Direct type mappings (for non-generic types)
         if python_type is str:
             return "string"
         elif python_type is int:

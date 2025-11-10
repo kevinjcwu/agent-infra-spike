@@ -98,10 +98,13 @@
 agent-infra-spike/
 ├── orchestrator/                    # MAF conversational orchestrator
 ├── capabilities/                    # Pluggable infrastructure capabilities
-├── agent/                           # Deployment logic (ACTIVE)
-├── templates/                       # Terraform Jinja2 templates
-├── tests/                           # 23 tests, all passing
-├── docs/                            # Documentation (cleaned up)
+│   └── databricks/
+│       ├── core/                    # Business logic
+│       ├── models/                  # Data structures
+│       ├── provisioning/            # Infrastructure deployment
+│       └── templates/               # Terraform Jinja2 templates
+├── tests/                           # 105 tests, all passing
+├── docs/                            # Documentation
 ├── cli_maf.py                       # 🎯 USE THIS
 ├── pyproject.toml
 └── .env

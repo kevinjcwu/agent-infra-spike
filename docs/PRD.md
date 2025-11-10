@@ -1,10 +1,10 @@
 # Product Requirements Document (PRD)
 ## Databricks Infrastructure Automation Agent - Spike/POC
 
-**Version**: 1.0  
-**Date**: January 2025  
-**Status**: Spike/Proof of Concept  
-**Author**: Infrastructure Automation Team  
+**Version**: 1.0
+**Date**: January 2025
+**Status**: Spike/Proof of Concept
+**Author**: Infrastructure Automation Team
 
 ---
 
@@ -69,8 +69,8 @@ Build a proof-of-concept AI agent that automates Databricks workspace provisioni
 ## User Stories
 
 ### US-001: Natural Language Request (P0)
-**As a** data platform engineer  
-**I want to** describe infrastructure needs in natural language  
+**As a** data platform engineer
+**I want to** describe infrastructure needs in natural language
 **So that** I don't need to write Terraform or click through Azure portal
 
 **Acceptance Criteria:**
@@ -92,8 +92,8 @@ Output:
 ---
 
 ### US-002: Intelligent Configuration Selection (P0)
-**As a** infrastructure agent  
-**I want to** choose appropriate instance types and configurations  
+**As a** infrastructure agent
+**I want to** choose appropriate instance types and configurations
 **So that** workspaces are right-sized for their workload
 
 **Acceptance Criteria:**
@@ -116,8 +116,8 @@ Decision:
 ---
 
 ### US-003: Terraform Code Generation (P0)
-**As a** infrastructure agent  
-**I want to** generate valid Terraform configuration  
+**As a** infrastructure agent
+**I want to** generate valid Terraform configuration
 **So that** infrastructure can be provisioned reliably
 
 **Acceptance Criteria:**
@@ -139,8 +139,8 @@ generated/
 ---
 
 ### US-004: Automated Deployment (P0)
-**As a** infrastructure agent  
-**I want to** execute Terraform deployment automatically  
+**As a** infrastructure agent
+**I want to** execute Terraform deployment automatically
 **So that** infrastructure is provisioned without manual intervention
 
 **Acceptance Criteria:**
@@ -162,8 +162,8 @@ generated/
 ---
 
 ### US-005: Deployment Verification (P0)
-**As a** platform engineer  
-**I want to** verify the workspace is functional  
+**As a** platform engineer
+**I want to** verify the workspace is functional
 **So that** I can confirm the deployment succeeded
 
 **Acceptance Criteria:**
@@ -191,8 +191,8 @@ Verification:
 ---
 
 ### US-006: Approval Mode Demo (P1)
-**As a** platform engineer  
-**I want to** review and approve infrastructure before deployment  
+**As a** platform engineer
+**I want to** review and approve infrastructure before deployment
 **So that** I maintain control over production changes
 
 **Acceptance Criteria:**
@@ -342,26 +342,26 @@ class DeploymentResult:
 ```python
 class InfrastructureAgent:
     """Main agent orchestrator"""
-    
+
     def __init__(self, config: AgentConfig):
         """Initialize agent with configuration"""
         pass
-    
+
     def process_request(
-        self, 
+        self,
         user_message: str,
         auto_approve: bool = False
     ) -> DeploymentResult:
         """
         Process natural language request and deploy infrastructure
-        
+
         Args:
             user_message: Natural language request
             auto_approve: Skip approval prompt if True
-            
+
         Returns:
             DeploymentResult with workspace details
-            
+
         Raises:
             ValidationError: If request cannot be parsed
             DeploymentError: If Terraform execution fails
@@ -374,14 +374,14 @@ class InfrastructureAgent:
 ```python
 class IntentRecognizer:
     """Parse natural language into structured requests"""
-    
+
     def recognize(
-        self, 
+        self,
         user_message: str
     ) -> InfrastructureRequest:
         """
         Parse natural language into structured parameters
-        
+
         Example:
             Input: "Create prod workspace for ML team in East US"
             Output: InfrastructureRequest(
@@ -399,14 +399,14 @@ class IntentRecognizer:
 ```python
 class DecisionEngine:
     """Make infrastructure configuration decisions"""
-    
+
     def decide(
         self,
         request: InfrastructureRequest
     ) -> InfrastructureDecision:
         """
         Determine optimal infrastructure configuration
-        
+
         Logic:
         - ML team + GPU → NC6s_v3 instances
         - Production → Premium SKU, larger instances
@@ -421,14 +421,14 @@ class DecisionEngine:
 ```python
 class TerraformGenerator:
     """Generate Terraform configuration files"""
-    
+
     def generate(
         self,
         decision: InfrastructureDecision
     ) -> Dict[str, str]:
         """
         Generate Terraform files from decisions
-        
+
         Returns:
             Dictionary of filename -> content
             {
@@ -445,7 +445,7 @@ class TerraformGenerator:
 ```python
 class TerraformExecutor:
     """Execute Terraform commands"""
-    
+
     def execute_workflow(
         self,
         working_dir: str,
@@ -453,14 +453,14 @@ class TerraformExecutor:
     ) -> DeploymentResult:
         """
         Run complete Terraform workflow
-        
+
         Steps:
         1. terraform init
         2. terraform plan
         3. [Optional: Wait for approval]
         4. terraform apply
         5. Parse outputs
-        
+
         Returns:
             DeploymentResult with workspace details
         """
@@ -587,7 +587,7 @@ databricks-agent-spike/
 │   ├── models.py                      # Data classes
 │   └── config.py                      # Configuration management
 │
-├── templates/
+├── templates/                         # NOTE: Now at capabilities/databricks/templates/
 │   ├── main.tf.j2                     # Jinja2 template for main.tf
 │   ├── variables.tf.j2                # Jinja2 template for variables.tf
 │   └── terraform.tfvars.j2            # Jinja2 template for tfvars
@@ -647,7 +647,7 @@ class AgentConfig:
     working_directory: str = "./generated"
     auto_approve: bool = False
     cost_limit_default: float = 10000.0
-    
+
     # Azure defaults
     default_region: str = "eastus"
     default_vnet_cidr: str = "10.100.0.0/16"
@@ -690,20 +690,20 @@ def test_prod_gets_premium_sku():
 def test_end_to_end_request():
     """Test complete flow without actual deployment"""
     input = "Create dev workspace for analytics team"
-    
+
     # Parse
     request = agent.parse_request(input)
-    
+
     # Decide
     decision = agent.make_decision(request)
-    
+
     # Generate
     files = agent.generate_terraform(decision)
-    
+
     # Validate
     assert "main.tf" in files
     assert "terraform.tfvars" in files
-    
+
     # Terraform validate (no actual apply)
     result = agent.validate_terraform(files)
     assert result.valid == True
@@ -794,7 +794,7 @@ python cli.py
 # Manual: 3-4 hours
 # Automated: 18 minutes
 # Time saved: 91%
-# 
+#
 # For 400 workspaces:
 # Manual: 1 month
 # Automated: 3 days (sequential) or 12 hours (parallel)
@@ -952,31 +952,31 @@ The spike is complete when:
 ```python
 def estimate_monthly_cost(decision: InfrastructureDecision) -> float:
     """Calculate estimated monthly infrastructure cost"""
-    
+
     # Firewall (fixed)
     firewall_cost = 1.25 * 730  # $/hour * hours/month = $912.50
-    
+
     # Storage (Unity Catalog)
     storage_cost = 50  # ~50GB estimated
-    
+
     # Networking (VNet, NSG, etc.)
     networking_cost = 10  # Minimal
-    
+
     # Compute (variable based on usage)
     instance_cost_per_hour = AZURE_PRICING[decision.instance_types[0]]
     dbu_cost_per_hour = DBU_PRICING[decision.sku][decision.cluster_type]
-    
-    avg_workers = (decision.cluster_config['min_workers'] + 
+
+    avg_workers = (decision.cluster_config['min_workers'] +
                    decision.cluster_config['max_workers']) / 2
-    
+
     # Assume 8 hours/day, 20 days/month for dev; 24/7 for prod
     hours_per_month = 730 if decision.environment == 'prod' else 160
-    
+
     compute_cost = (instance_cost_per_hour + dbu_cost_per_hour) * \
                    avg_workers * hours_per_month
-    
+
     total = firewall_cost + storage_cost + networking_cost + compute_cost
-    
+
     return round(total, 2)
 ```
 
@@ -986,18 +986,18 @@ def estimate_monthly_cost(decision: InfrastructureDecision) -> float:
 # Expected module usage
 module "databricks_workspace" {
   source = "./modules/databricks-workspace"
-  
+
   # Required
   workspace_prefix = "ml-team-prod"
   environment      = "prod"
   location         = "eastus"
-  
+
   # Optional with defaults
   vnet_address_space       = ["10.100.0.0/16"]
   enable_unity_catalog     = true
   enable_private_endpoints = true
   instance_pool_type       = "Standard_NC6s_v3"
-  
+
   # Tags
   tags = {
     Team       = "ML Team"

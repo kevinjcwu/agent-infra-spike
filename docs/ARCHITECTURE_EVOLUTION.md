@@ -197,7 +197,7 @@ User: "I need Databricks for ML team in production"
 │ terraform_generator.py:                                     │
 │   • Generate: main.tf, variables.tf, outputs.tf,            │
 │              provider.tf, terraform.tfvars                  │
-│   • Use templates: templates/*.tf.j2                        │
+│   • Use templates: capabilities/databricks/templates/*.tf.j2 │
 │                                                             │
 │ terraform_executor.py:                                      │
 │   • Write files to working directory                        │
@@ -297,22 +297,23 @@ agent-infra-spike/
 │       ├── __init__.py
 │       └── capability.py            # DatabricksCapability wraps agent/
 │
-├── agent/                           # Actual deployment code (ACTIVE)
-│   ├── __init__.py
-│   ├── infrastructure_agent.py      # Legacy single-shot interface
-│   ├── intent_recognizer.py         # LLM-based request parsing
-│   ├── decision_engine.py           # Configuration decision logic
-│   ├── terraform_generator.py       # HCL file generation from templates
-│   ├── terraform_executor.py        # Terraform CLI execution
-│   ├── models.py                    # InfrastructureRequest, Decision, Result
-│   └── config.py                    # Azure credentials and settings
-│
-├── templates/                       # Terraform Jinja2 templates
-│   ├── main.tf.j2                   # Resource definitions
-│   ├── variables.tf.j2              # Variable declarations
-│   ├── outputs.tf.j2                # Output definitions
-│   ├── provider.tf.j2               # Azure provider config
-│   └── terraform.tfvars.j2          # Variable values
+├── capabilities/databricks/         # Databricks provisioning capability (ACTIVE)
+│   ├── core/                        # Business logic
+│   │   ├── config.py                # Configuration & pricing
+│   │   ├── intent_parser.py         # LLM-based request parsing
+│   │   └── decision_maker.py        # Configuration decision logic
+│   ├── models/                      # Data structures
+│   │   └── schemas.py               # Pydantic models
+│   ├── provisioning/                # Infrastructure deployment
+│   │   └── terraform/
+│   │       ├── generator.py         # HCL file generation from templates
+│   │       └── executor.py          # Terraform CLI execution
+│   └── templates/                   # Terraform Jinja2 templates
+│       ├── main.tf.j2               # Resource definitions
+│       ├── variables.tf.j2          # Variable declarations
+│       ├── outputs.tf.j2            # Output definitions
+│       ├── provider.tf.j2           # Azure provider config
+│       └── terraform.tfvars.j2      # Variable values
 │
 ├── cli_maf.py                       # 🎯 Conversational CLI (USE THIS)
 ├── tests/                           # Test suite organized by phase
