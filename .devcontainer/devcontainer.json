@@ -55,10 +55,16 @@
       ]
     }
   },
-  "forwardPorts": [8000, 8080, 8888, 9000],
+  "forwardPorts": [
+    8000,
+    8080,
+    8888,
+    9000
+  ],
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "mounts": [
-    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.azure,target=/home/vscode/.azure,type=bind,consistency=cached"
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.azure,target=/home/vscode/.azure,type=bind,consistency=cached",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
   ],
   "remoteEnv": {
     "PYTHONPATH": "${containerWorkspaceFolder}"

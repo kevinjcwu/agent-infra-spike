@@ -273,7 +273,7 @@ Reduces Databricks workspace provisioning from **3-4 hours (manual)** to **~13 m
 - **Technology**: Jinja2 templating engine
 - **Purpose**: Generates production-ready Terraform HCL files
 - **How it works**:
-  - Loads templates from `templates/*.j2`
+  - Loads templates from `capabilities/databricks/templates/*.j2`
   - Renders with decision variables
   - Produces 5 Terraform files ready for execution
 - **Templates**:
@@ -418,17 +418,16 @@ agent-infra-spike/
 │       │   └── decision_maker.py    # Configuration decisions
 │       ├── models/                  # Data Models Layer
 │       │   └── schemas.py           # Pydantic data classes
-│       └── provisioning/            # Infrastructure Layer
-│           └── terraform/
-│               ├── generator.py     # Jinja2: Decision → HCL
-│               └── executor.py      # Terraform CLI wrapper
-│
-├── templates/                       # Terraform Jinja2 templates
-│   ├── main.tf.j2
-│   ├── variables.tf.j2
-│   ├── outputs.tf.j2
-│   ├── provider.tf.j2
-│   └── terraform.tfvars.j2
+      ├── provisioning/            # Infrastructure Layer
+       │   └── terraform/
+       │       ├── generator.py     # Jinja2: Decision → HCL
+       │       └── executor.py      # Terraform CLI wrapper
+       └── templates/               # Terraform Jinja2 templates
+           ├── main.tf.j2
+           ├── variables.tf.j2
+           ├── outputs.tf.j2
+           ├── provider.tf.j2
+           └── terraform.tfvars.j2
 │
 ├── tests/                           # Test suite (94 tests, all passing)
 │   ├── test_maf_setup.py            # Phase 0
